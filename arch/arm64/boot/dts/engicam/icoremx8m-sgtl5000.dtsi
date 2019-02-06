@@ -1,0 +1,74 @@
+
+#include <dt-bindings/clock/imx8qm-clock.h>
+#include <dt-bindings/pinctrl/pins-imx8mq.h>
+
+/ {
+
+
+    sound {
+        compatible = "simple-audio-card";
+        simple-audio-card,name = "imx8qm-sgtl5000";
+        simple-audio-card,format = "i2s";
+        simple-audio-card,bitclock-master = <&dailink_master>;
+        simple-audio-card,frame-master = <&dailink_master>;
+        /*simple-audio-card,mclk-fs = <1>;*/
+        simple-audio-card,cpu {
+                sound-dai = <&sai2>;
+        };
+
+        dailink_master: simple-audio-card,codec {
+            sound-dai = <&sgtl5000>;
+            clocks = <&clk IMX8MQ_CLK_CLKO2_DIV>;
+        };   
+    };
+
+};
+
+
+
+&iomuxc {
+    	icoremx8mq {  
+        pinctrl_sgtl5000: sgtl5000grp {
+            fsl,pins = <
+                MX8MQ_IOMUXC_GPIO1_IO15_CCMSRCGPCMIX_CLKO2        0xd6
+            >;
+        };
+        
+        pinctrl_sai2: sai2grp {
+			fsl,pins = <			
+				MX8MQ_IOMUXC_SAI2_TXFS_SAI2_TX_SYNC	0xd6
+				MX8MQ_IOMUXC_SAI2_TXC_SAI2_TX_BCLK	0xd6
+				//MX8MQ_IOMUXC_SAI2_MCLK_SAI2_MCLK	0xd6
+				MX8MQ_IOMUXC_SAI2_TXD0_SAI2_TX_DATA0	0xd6
+				MX8MQ_IOMUXC_SAI2_RXD0_SAI2_RX_DATA0	0xd6			
+			>;
+		};
+    };
+};        
+
+
+
+&i2c1 {
+        sgtl5000: codec@a {
+                compatible = "fsl,sgtl5000";
+                status = "okay";
+                #sound-dai-cells = <0>;
+                pinctrl-names = "default";
+                pinctrl-0 = <&pinctrl_sgtl5000>;
+                reg = <0x0a>;
+                clocks = <&clk IMX8MQ_CLK_CLKO2_DIV>;
+                clock-names = "sgtl5000_mclk";
+                assigned-clock-rates = <24576000>, <24576000>;                
+                VDDA-supply = <&reg_module_3v3_avdd>;
+                VDDIO-supply = <&reg_module_3v3>;
+                VDDD-supply = <&reg_vref_1v8>;
+        };
+};
+
+
+&sai2 {
+	#sound-dai-cells = <0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_sai2>;
+	status = "okay";
+};

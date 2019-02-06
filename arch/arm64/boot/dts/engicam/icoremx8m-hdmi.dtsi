@@ -1,0 +1,25 @@
+
+/ {
+       sound-hdmi {
+                compatible = "fsl,imx-audio-cdnhdmi";
+                model = "imx-audio-hdmi";
+                audio-cpu = <&sai4>;
+                protocol = <1>;
+        };        
+};
+
+
+&hdmi {
+    status = "okay";
+};
+
+
+&hdmi_cec {
+	status = "okay";
+};
+
+
+&dcss {
+	status = "okay";
+    disable-cpuidle;
+};

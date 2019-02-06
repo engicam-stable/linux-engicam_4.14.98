@@ -1,0 +1,156 @@
+
+/ {
+	model = "Engicam iCoreMX8MQ EVK";
+	compatible = "fsl,imx8mq-evk", "fsl,imx8mq";
+        
+        backlight_lvds: backlight_lvds {
+                compatible = "pwm-backlight";
+                pinctrl-names = "default";
+                pinctrl-0 = <&pinctrl_pwm2>;
+                pwms = <&pwm2 0 1000000>;
+                brightness-levels = <0 4 8 16 32 64 128 255>;
+                default-brightness-level = <7>;
+                status = "okay";
+        };
+
+	display-subsystem {
+		status = "disabled";
+	};
+
+};
+
+&hdmi {
+	status = "disabled";
+};
+
+#ifdef TOLTO_MM
+&hdmi_cec {
+	status = "disabled";
+};
+#endif
+
+&iomuxc {
+	icoremx8m {
+        pinctrl_dsi_lvds_bridge: lvds_bridge_gpio {
+            fsl,pins = <
+                MX8MQ_IOMUXC_NAND_CE3_B_GPIO3_IO4	0x17059
+				MX8MQ_IOMUXC_NAND_CE2_B_GPIO3_IO3	0x17059
+            >;
+        };
+        
+        pinctrl_pwm2: pwm1grp {
+                fsl,pins = <
+                        MX8MQ_IOMUXC_GPIO1_IO13_PWM2_OUT                0x56
+                >;
+        };
+
+    };    
+};
+
+
+&pwm2{
+
+    status = "okay";
+    
+};
+
+&i2c3 {
+	clock-frequency = <400000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2c3>;
+	status = "okay";
+
+    lvds_bridge: sn65dsi83@2c {
+        compatible = "ti,sn65dsi83";
+        reg = <0x2c>;
+        ti,dsi-lanes = <4>;
+        ti,lvds-format = <2>;
+        ti,lvds-bpp = <24>;
+        ti,width-mm = <149>;
+        ti,height-mm = <93>;
+		enable-gpios = <&gpio3 4  GPIO_ACTIVE_HIGH>;
+        pinctrl-names = "default";
+        pinctrl-0 = <&pinctrl_dsi_lvds_bridge>;
+        status = "okay";
+
+       display-timings {
+            lvds {
+                clock-frequency = <62500000>;
+                hactive = <1280>;
+                vactive = <800>;
+                hback-porch = <6>;
+                hfront-porch = <5>;
+                vback-porch = <2>;
+                vfront-porch = <3>;
+                hsync-len = <2>;
+                vsync-len = <1>;
+                hsync-active = <0>;
+                vsync-active = <0>;
+                de-active = <1>;
+                pixelclk-active = <0>;
+            };
+        };
+
+        port {
+            sn65dsi83_in: endpoint {
+                remote-endpoint = <&mipi_dsi_bridge_out>;
+            };
+        };
+    };
+};
+
+
+&lcdif {
+	status = "okay";
+	assigned-clocks = <&clk IMX8MQ_CLK_LCDIF_PIXEL>,
+			  <&clk IMX8MQ_VIDEO_PLL1_REF_SEL>;
+	assigned-clock-parents = <&clk IMX8MQ_VIDEO_PLL1_OUT>,
+				 <&clk IMX8MQ_CLK_25M>;
+	max-res = <1280>, <800>;
+
+	port@0 {
+		lcdif_mipi_dsi: mipi-dsi-endpoint {
+			remote-endpoint = <&mipi_dsi_in>;
+		};
+	};
+};
+
+
+&mipi_dsi_phy {
+	status = "okay";
+};
+
+&mipi_dsi {
+	status = "okay";
+	as_bridge;
+	assigned-clocks = <&clk IMX8MQ_CLK_DSI_CORE>,
+			  <&clk IMX8MQ_CLK_DSI_PHY_REF>,
+			  <&clk IMX8MQ_VIDEO_PLL1_REF_SEL>;
+	assigned-clock-parents = <&clk IMX8MQ_SYS1_PLL_266M>,
+				 <&clk IMX8MQ_VIDEO_PLL1_OUT>,
+				 <&clk IMX8MQ_CLK_25M>;
+	assigned-clock-rates = <266000000>;
+
+	clocks = <&clk IMX8MQ_CLK_DSI_CORE>,
+		 <&clk IMX8MQ_CLK_DSI_PHY_REF>,
+		 <&clk IMX8MQ_VIDEO_PLL1>;
+	clock-names = "core", "phy_ref", "pixel_pll";
+	
+	port@1 {
+		mipi_dsi_in: endpoint {
+			remote-endpoint = <&lcdif_mipi_dsi>;
+		};
+	};
+};
+
+&mipi_dsi_bridge {
+    status = "okay";
+
+    port@1 {
+        mipi_dsi_bridge_out: endpoint {
+            remote-endpoint = <&sn65dsi83_in>;
+        };
+    };
+};
+
+

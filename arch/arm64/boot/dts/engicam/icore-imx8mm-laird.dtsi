@@ -1,0 +1,53 @@
+/ {
+    regulators {
+    wlreg_on: fixedregulator@100 {
+        compatible = "regulator-fixed";
+        regulator-name = "wlreg_on";
+        regulator-min-microvolt = <3300000>;
+        regulator-max-microvolt = <3300000>;
+        gpio = <&gpio3 22 GPIO_ACTIVE_HIGH>;
+        startup-delay-us = <100>;
+        enable-active-high;
+        };
+
+    btreg_on: fixedregulator@200 {
+        compatible = "regulator-fixed";
+        regulator-name = "btreg_on";
+        regulator-min-microvolt = <3300000>;
+        regulator-max-microvolt = <3300000>;
+        gpio = <&gpio3 23 GPIO_ACTIVE_HIGH>;
+        startup-delay-us = <100>;
+        enable-active-high;
+        };
+    };
+
+};
+
+&usdhc2 {
+	pinctrl-names = "default";//, "state_100mhz", "state_200mhz";
+	pinctrl-0 = <&pinctrl_usdhc2>, <&pinctrl_laird>;
+	//pinctrl-1 = <&pinctrl_usdhc2_100mhz>;
+	//pinctrl-2 = <&pinctrl_usdhc2_200mhz>;
+	bus-width = <4>;   
+	// max-frequency	= <1000000>;
+    no-1-8-v;
+    non-removable;
+    enable-sdio-wakeup;
+    vmmc-supply = <&wlreg_on>, <&btreg_on>;
+    wifi-host;
+    status = "okay";
+};
+
+&iomuxc {
+    	icore-imx8mm {  
+        pinctrl_laird: lairdgrp {
+            fsl,pins = <
+                MX8MM_IOMUXC_SAI5_RXD1_GPIO3_IO22        0x19
+				MX8MM_IOMUXC_SAI5_RXD2_GPIO3_IO23		 0x19
+            >;
+        };
+        
+    };
+};        
+
+

@@ -1,0 +1,91 @@
+
+#include <dt-bindings/clock/imx8mm-clock.h>
+#include <dt-bindings/pinctrl/pins-imx8mm.h>
+
+/ {
+
+	regulators {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		reg_3v3_avdd_sgtl: reg_3v3_avdd_regulator {
+			compatible = "regulator-fixed";
+			regulator-name = "3v3_avdd_sgtl";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			always-on;
+		};
+
+		reg_3v3_sgtl: reg_3v3_sgtl_regulator {
+			compatible = "regulator-fixed";
+			regulator-name = "3v3_sgtl";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			always-on;
+		};
+
+		reg_1v8_sgtl: reg_1v8_sgtl_regulator {
+			compatible = "regulator-fixed";
+			regulator-name = "1v8_sgtl";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			always-on;
+		};
+	};
+
+    sound {
+        compatible = "simple-audio-card";
+        simple-audio-card,name = "imx8mm-sgtl5000";
+        simple-audio-card,format = "i2s";
+        simple-audio-card,bitclock-master = <&dailink_master>;
+        simple-audio-card,frame-master = <&dailink_master>;
+        /*simple-audio-card,mclk-fs = <1>;*/
+        simple-audio-card,cpu {
+                sound-dai = <&sai3>;
+        };
+
+        dailink_master: simple-audio-card,codec {
+            sound-dai = <&sgtl5000>;
+            clocks = <&clk IMX8MM_CLK_SAI3_DIV>;
+        };   
+    };
+};
+
+
+
+
+&i2c2 {
+        sgtl5000: codec@a {
+                compatible = "fsl,sgtl5000";
+                status = "okay";
+                #sound-dai-cells = <0>;
+//                pinctrl-names = "default";
+//                pinctrl-0 = <&pinctrl_sgtl5000>;
+                reg = <0x0a>;
+                clocks = <&clk IMX8MM_CLK_SAI3_DIV>;
+                clock-names = "mclk";
+                assigned-clock-rates = <24576000>, <24576000>;                
+                VDDA-supply = <&reg_3v3_avdd_sgtl>;
+                VDDIO-supply = <&reg_3v3_sgtl>;
+                VDDD-supply = <&reg_1v8_sgtl>;
+        };
+};
+
+&sai3 {
+	#sound-dai-cells = <0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_sai3>;
+	assigned-clocks = <&clk IMX8MM_CLK_SAI3_SRC>,
+			<&clk IMX8MM_CLK_SAI3_DIV>;
+	assigned-clock-parents = <&clk IMX8MM_AUDIO_PLL1_OUT>;
+	assigned-clock-rates = <0>, <24576000>;
+	clocks = <&clk IMX8MM_CLK_SAI3_IPG>, <&clk IMX8MM_CLK_SAI3_ROOT>,
+		<&clk IMX8MM_CLK_SAI3_ROOT>, <&clk IMX8MM_CLK_DUMMY>,
+		<&clk IMX8MM_CLK_DUMMY>, <&clk IMX8MM_AUDIO_PLL1_OUT>,
+		<&clk IMX8MM_AUDIO_PLL2_OUT>;
+	clock-names = "bus", "mclk0", "mclk1", "mclk2", "mclk3", "pll8k", "pll11k";
+	status = "okay";
+};
+
+

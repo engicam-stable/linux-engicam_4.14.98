@@ -1314,6 +1314,8 @@ static void sgtl5000_fill_defaults(struct i2c_client *client)
 	}
 }
 
+static int sgtl_wait = 1;
+
 static int sgtl5000_i2c_probe(struct i2c_client *client,
 			      const struct i2c_device_id *id)
 {
@@ -1322,6 +1324,14 @@ static int sgtl5000_i2c_probe(struct i2c_client *client,
 	struct device_node *np = client->dev.of_node;
 	u32 value;
 	u16 ana_pwr;
+
+	if (sgtl_wait > 0)
+	{
+		dev_info(&client->dev, "sgtl5000 deferred probe %d\n", sgtl_wait);
+		sgtl_wait--;
+		ret = -EPROBE_DEFER;
+		return ret;
+	}
 
 	sgtl5000 = devm_kzalloc(&client->dev, sizeof(*sgtl5000), GFP_KERNEL);
 	if (!sgtl5000)
@@ -1357,13 +1367,16 @@ static int sgtl5000_i2c_probe(struct i2c_client *client,
 	}
 
 	/* Need 8 clocks before I2C accesses */
-	udelay(1);
+	mdelay(1);
 
 	/* read chip information */
 	ret = regmap_read(sgtl5000->regmap, SGTL5000_CHIP_ID, &reg);
 	if (ret) {
 		dev_err(&client->dev, "Error reading chip id %d\n", ret);
-		goto disable_clk;
+		dev_err(&client->dev, "Deferred probe\n");
+		/* Defer the probe to see if the clk will be provided later */
+		ret = -EPROBE_DEFER;
+		goto disable_regs;
 	}
 
 	if (((reg & SGTL5000_PARTID_MASK) >> SGTL5000_PARTID_SHIFT) !=

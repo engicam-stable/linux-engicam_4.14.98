@@ -927,8 +927,10 @@ drm_atomic_helper_update_legacy_modeset_state(struct drm_device *dev,
 				mode = DRM_MODE_DPMS_ON;
 
 			connector->dpms = mode;
+			drm_notifier_call_chain(mode, connector->dev); //MM
 		}
 	}
+
 
 	/* set new links */
 	for_each_new_connector_in_state(old_state, connector, new_conn_state, i) {

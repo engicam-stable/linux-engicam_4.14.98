@@ -1340,7 +1340,7 @@ bool drm_mode_parse_command_line_for_connector(const char *mode_option,
 	bool yres_specified = false, cvt = false, rb = false;
 	bool interlace = false, margins = false, was_digit = false;
 	int i;
-	enum drm_connector_force force = DRM_FORCE_ON;
+	enum drm_connector_force force = DRM_FORCE_UNSPECIFIED;
 
 #ifdef CONFIG_FB
 	if (!mode_option)

@@ -17,8 +17,8 @@
 //#include "../freescale/fsl-imx8mq.dtsi"
 #include "icoremx8mq.dtsi"
 #include "icoremx8m-lcdif-sn65dsi83.dtsi"
-//#include "icoremx8m-laird.dtsi"
-//#include "icoremx8m-sgtl5000.dtsi"
+#include "icoremx8m-laird.dtsi"
+#include "icoremx8m-sgtl5000.dtsi"
 //#include "icoremx8m-hdmi.dtsi"
 
 / {
@@ -143,6 +143,7 @@
 			>;
 		};
 
+#ifdef TOLTO_MM
 		pinctrl_qspi: qspigrp {
 			fsl,pins = <
 				MX8MQ_IOMUXC_NAND_ALE_QSPI_A_SCLK	0x82
@@ -161,7 +162,7 @@
 				MX8MQ_IOMUXC_NAND_CE2_B_GPIO3_IO3	0x17059
 			>;
 		};
-
+#endif
 		pinctrl_uart1: uart1grp {
 			fsl,pins = <
 				MX8MQ_IOMUXC_UART1_RXD_UART1_DCE_RX		0x49
@@ -506,7 +507,7 @@
 	status = "disabled";
 };
 
-
+#ifdef TOLTO_MM
 &iomuxc {
 	icoremx8m {	
         
@@ -535,10 +536,10 @@
 &gpmi {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_gpmi_nand_1>;
-	status = "okay";
+	status = "disabled";
 	nand-on-flash-bbt;
 };
-
+#endif
 &iomuxc {
 	icoremx8m {
         	pinctrl_fec1: fec1grp {

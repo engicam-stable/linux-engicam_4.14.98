@@ -18,7 +18,7 @@
 
         dailink_master: simple-audio-card,codec {
             sound-dai = <&sgtl5000>;
-            clocks = <&clk IMX8MQ_CLK_CLKO2_DIV>;
+            clocks = <&clk IMX8MQ_CLK_CLKO2>;
         };   
     };
 
@@ -56,7 +56,7 @@
                 pinctrl-names = "default";
                 pinctrl-0 = <&pinctrl_sgtl5000>;
                 reg = <0x0a>;
-                clocks = <&clk IMX8MQ_CLK_CLKO2_DIV>;
+                clocks = <&clk IMX8MQ_CLK_CLKO2>;
                 clock-names = "sgtl5000_mclk";
                 assigned-clock-rates = <24576000>, <24576000>;                
                 VDDA-supply = <&reg_module_3v3_avdd>;

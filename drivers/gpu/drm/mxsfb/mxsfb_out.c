@@ -94,7 +94,7 @@ int mxsfb_create_output(struct drm_device *drm)
 
 	if (mxsfb->panel) {
 		mxsfb->connector = &mxsfb->panel_connector;
-		mxsfb->connector->dpms = DRM_MODE_DPMS_OFF;
+		mxsfb->connector->dpms = DRM_MODE_DPMS_ON;
 		mxsfb->connector->polled = 0;
 		drm_connector_helper_add(mxsfb->connector,
 				&mxsfb_panel_connector_helper_funcs);

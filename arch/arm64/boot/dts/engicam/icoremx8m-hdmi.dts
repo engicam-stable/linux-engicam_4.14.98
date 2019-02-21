@@ -1,0 +1,101 @@
+/*
+ * Copyright 2017 NXP
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+
+#define ICORE_ONLY_HDMI
+#include "icoremx8m.dts"
+/ {
+	model = "Engicam iCoreMX8MQ Starterkit with HDMI";
+
+	sound-hdmi {
+		status = "okay";
+		compatible = "fsl,imx8mq-evk-cdnhdmi",
+				"fsl,imx-audio-cdnhdmi";
+		model = "imx-audio-hdmi";
+		audio-cpu = <&sai4>;
+		protocol = <1>;
+		hdmi-out;
+		constraint-rate = <44100>,
+				<88200>,
+				<176400>,
+				<32000>,
+				<48000>,
+				<96000>,
+				<192000>;
+	};
+
+	display-subsystem {
+		status = "okay";
+	};
+
+	hdmi_enable: hdmi_enable-reset {
+		compatible = "gpio-reset";
+		reset-gpios = <&gpio4 20 GPIO_ACTIVE_LOW>;
+		reset-delay-us = <200>;
+		reset-post-delay-ms = <40>;
+		#reset-cells = <0>;
+	};
+
+};
+
+
+&iomuxc {
+	icoremx8m {
+        pinctrl_enable_hdmi_clk: enable_hdmi_clk {
+            fsl,pins = <
+                MX8MQ_IOMUXC_SAI1_MCLK_GPIO4_IO20	0x17059
+            >;
+        };
+        
+    };    
+};
+
+&hdmi {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_enable_hdmi_clk>;
+    status = "okay";
+	resets = <&hdmi_enable>;
+};
+
+/*
+&hdmi_cec {
+	status = "okay";
+};
+*/
+
+&dcss {
+	status = "okay";
+	disp-dev = "hdmi_disp";
+};
+
+
+#ifdef ICORE_ONLY_HDMI
+&mipi_dsi_phy {
+	status = "disabled";
+};
+
+&mipi_dsi {
+	status = "disabled";
+};
+
+&mipi_dsi_bridge {
+    status = "disabled";
+};
+
+&lcdif {
+	status = "disabled";
+};
+#endif
+

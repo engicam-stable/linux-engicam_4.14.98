@@ -297,9 +297,6 @@ static int sn65dsi83_brg_configure(struct sn65dsi83_brg *brg)
     if (FLAGS & DISPLAY_FLAGS_VSYNC_LOW)
         regval |= (1 << VS_NEG_POLARITY_SHIFT);
 
-    if (FLAGS & DISPLAY_FLAGS_DE_LOW)
-        regval |= (1 << DE_NEG_POLARITY_SHIFT);
-
     if (BPP(brg) == 24)
         regval |= (1 << CHA_24BPP_MODE_SHIFT);
 

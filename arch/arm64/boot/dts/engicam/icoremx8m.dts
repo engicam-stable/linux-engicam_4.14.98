@@ -362,7 +362,7 @@
 	bus-width = <8>;
     max-frequency = <25000000>;	
 	non-removable;
-	status = "disabled";	// da riattivare
+	status = "okay";	
 };
 
 &usdhc2 {

@@ -14,7 +14,7 @@
 
 /dts-v1/;
 
-#define ICORE_ONLY_HDMI
+//#define ICORE_ONLY_HDMI
 #include "icoremx8m.dts"
 / {
 	model = "Engicam iCoreMX8MQ Starterkit with HDMI";

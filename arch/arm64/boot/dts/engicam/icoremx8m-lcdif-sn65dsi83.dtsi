@@ -2,7 +2,7 @@
 / {
 	model = "Engicam iCoreMX8MQ EVK";
 	compatible = "fsl,imx8mq-evk", "fsl,imx8mq";
-        
+
         backlight_lvds: backlight_lvds {
                 compatible = "pwm-backlight";
                 pinctrl-names = "default";
@@ -37,21 +37,19 @@
 				MX8MQ_IOMUXC_NAND_CE2_B_GPIO3_IO3	0x17059
             >;
         };
-        
+
         pinctrl_pwm2: pwm1grp {
                 fsl,pins = <
                         MX8MQ_IOMUXC_GPIO1_IO13_PWM2_OUT                0x56
                 >;
         };
 
-    };    
+    };
 };
 
 
 &pwm2{
-
     status = "okay";
-    
 };
 
 &i2c3 {
@@ -75,19 +73,19 @@
 
        display-timings {
             lvds {
-                    clock-frequency = <50000000>;
-                    hactive = <1024>;
-                    vactive = <600>;
-                    hback-porch = <150>;
-                    hfront-porch = <150>;
-                    vback-porch = <10>;
-                    vfront-porch = <10>;
-                    hsync-len = <20>;
-                    vsync-len = <15>;
-                    hsync-active = <0>;
-                    vsync-active = <0>;
-                    de-active = <1>;
-                    pixelclk-active = <0>;
+                clock-frequency = <76000000>;
+                hactive = <1024>;
+                vactive = <600>;
+                hback-porch = <150>;
+                hfront-porch = <150>;
+                vback-porch = <17>;
+                vfront-porch = <17>;
+                hsync-len = <20>;
+                vsync-len = <15>;
+                hsync-active = <0>;
+                vsync-active = <0>;
+                de-active = <0>; // TODO: forced on the sn65dsi83 driver
+                pixelclk-active = <0>;
             };
         };
 

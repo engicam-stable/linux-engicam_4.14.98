@@ -595,41 +595,6 @@
 		compatible = "pcf8563";
 		reg = <0x51>;
 	};
-
-    polytouch: edt-ft5x26@38 {
-                compatible = "edt,edt-ft5526";
-                reg = <0x38>;
-                pinctrl-names = "default";
-                pinctrl-0 = <&edt_ft5x06_pins>;
-                interrupt-parent = <&gpio3>;
-                interrupts = <19 IRQ_TYPE_EDGE_FALLING>;
-                reset-gpios= <&gpio1 8 GPIO_ACTIVE_LOW>;
-    };
-
-	
-	ov5640_mipi: ov5640_mipi@3c {
-		compatible = "ovti,ov5640_mipi";
-		reg = <0x3c>;
-		status = "okay";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_csi_pwn>, <&pinctrl_csi_rst>;
-		clocks = <&clk IMX8MM_CLK_CLKO1_DIV>;
-		clock-names = "csi_mclk";
-		assigned-clocks = <&clk IMX8MM_CLK_CLKO1_SRC>,
-				  <&clk IMX8MM_CLK_CLKO1_DIV>;
-		assigned-clock-parents = <&clk IMX8MM_CLK_24M>;
-		assigned-clock-rates = <0>, <24000000>;
-		csi_id = <0>;
-		pwn-gpios = <&gpio4 22 GPIO_ACTIVE_HIGH>;
-		mclk = <24000000>;
-		mclk_source = <0>;
-		port {
-			ov5640_mipi1_ep: endpoint {
-				remote-endpoint = <&mipi1_sensor_ep>;
-			};
-		};
-	};
-
 };
 
 

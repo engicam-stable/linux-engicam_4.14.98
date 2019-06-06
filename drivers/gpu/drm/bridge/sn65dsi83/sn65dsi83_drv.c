@@ -1,7 +1,7 @@
 /*
  * Licensed under the GPL-2.
  */
-
+//#define DEBUG
 #include <linux/device.h>
 #include <linux/gpio/consumer.h>
 #include <linux/module.h>
@@ -73,9 +73,15 @@ static int sn65dsi83_connector_get_modes(struct drm_connector *connector)
     connector->display_info.height_mm = mode->height_mm;
 
     if (brg->vm.flags & DISPLAY_FLAGS_DE_HIGH)
+	{
+	    dev_dbg(dev, "%s DISPLAY_FLAGS_DE_HIGH\n",__func__);
         *bus_flags |= DRM_BUS_FLAG_DE_HIGH;
-    if (brg->vm.flags & DISPLAY_FLAGS_DE_LOW)
+	}
+    if (brg->vm.flags & DISPLAY_FLAGS_DE_LOW)	
+	{
+	    dev_dbg(dev, "%s DISPLAY_FLAGS_DE_HIGH\n",__func__);
         *bus_flags |= DRM_BUS_FLAG_DE_LOW;
+	}
     if (brg->vm.flags & DISPLAY_FLAGS_PIXDATA_NEGEDGE)
         *bus_flags |= DRM_BUS_FLAG_PIXDATA_NEGEDGE;
     if (brg->vm.flags & DISPLAY_FLAGS_PIXDATA_POSEDGE)
@@ -89,6 +95,8 @@ static int sn65dsi83_connector_get_modes(struct drm_connector *connector)
     return 1;
 }
 
+void sn65dsi83_print_error(struct sn65dsi83_brg *brg);
+
 static enum drm_mode_status
 sn65dsi83_connector_mode_valid(struct drm_connector *connector,
                  struct drm_display_mode *mode)
@@ -96,11 +104,16 @@ sn65dsi83_connector_mode_valid(struct drm_connector *connector,
     struct sn65dsi83 *sn65dsi83 = connector_to_sn65dsi83(connector);
     struct device *dev = connector->dev->dev;
 	if (mode->clock > ( sn65dsi83->brg->vm.pixelclock / 1000 ))
+	{	
+	    dev_err(dev, "%s: wrong mode clock\n",__func__);
 		return MODE_CLOCK_HIGH;
-
-    dev_info(dev, "%s: mode: %d*%d@%d is valid\n",__func__,
+	}
+    
+	dev_info(dev, "%s: mode: %d*%d@%d is valid\n",__func__,
             mode->hdisplay,mode->vdisplay,mode->clock);
 
+	sn65dsi83_print_error(sn65dsi83->brg);
+	
 	//drm_kms_helper_hotplug_event(connector->dev);
     return MODE_OK;
 }
@@ -215,7 +228,7 @@ static int sn65dsi83_parse_dt(struct device_node *np,
     struct sn65dsi83 *sn65dsi83)
 {
     struct device *dev = &sn65dsi83->brg->client->dev;
-    u32 num_lanes = 4, bpp = 24, format = 2, width = 149, height = 93;
+    u32 num_lanes = 4, bpp = 24, format = 2, width = 149, height = 93, dual_channels = 0, pattern = 0;
     struct device_node *endpoint;
 
 	dev_dbg(dev, "sn65dsi83_parse_dt\n");
@@ -236,6 +249,8 @@ static int sn65dsi83_parse_dt(struct device_node *np,
     of_property_read_u32(np, "ti,lvds-bpp", &bpp);
     of_property_read_u32(np, "ti,width-mm", &width);
     of_property_read_u32(np, "ti,height-mm", &height);
+    of_property_read_u32(np, "ti,dual-channels", &dual_channels);
+    of_property_read_u32(np, "ti,pattern", &pattern);
 
     if (num_lanes < 1 || num_lanes > 4) {
         dev_err(dev, "Invalid dsi-lanes: %d\n", num_lanes);
@@ -254,6 +269,9 @@ static int sn65dsi83_parse_dt(struct device_node *np,
 
     sn65dsi83->brg->width_mm = width;
     sn65dsi83->brg->height_mm = height;
+
+    sn65dsi83->brg->dual_channels = dual_channels;
+    sn65dsi83->brg->pattern = pattern;
 
     /* Read default timing if there is not device tree node for */
     if ((of_get_videomode(np, &sn65dsi83->brg->vm, 0)) < 0)
@@ -351,7 +369,7 @@ static int sn65dsi83_attach_dsi(struct sn65dsi83 *sn65dsi83)
 //    dsi->mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_HSE |
 //               MIPI_DSI_CLOCK_NON_CONTINUOUS | MIPI_DSI_MODE_VIDEO_BURST;
 
-  dsi->mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_HSE;
+	dsi->mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_LPM | MIPI_DSI_MODE_VIDEO_BURST;
 //	dsi->mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_SYNC_PULSE |
 //			  MIPI_DSI_MODE_EOT_PACKET | MIPI_DSI_MODE_VIDEO_HSE;
 

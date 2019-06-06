@@ -24,8 +24,11 @@ struct sn65dsi83_brg {
     u32 height_mm;
     u32 format;
     u32 bpp;
-
+	u32 dual_channels;
+	u32 pattern;
+	
     u8 num_dsi_lanes;
+	
     struct sn65dsi83_brg_funcs *funcs;
 };
 struct sn65dsi83_brg *sn65dsi83_brg_get(void);
@@ -34,6 +37,8 @@ struct sn65dsi83_brg *sn65dsi83_brg_get(void);
 #define I2C_CLIENT(A) (A)->client
 #define VM(A) &(A)->vm
 #define BPP(A) (A)->bpp
+#define DUAL_CHANNELS(A) (A)->dual_channels
+#define PATTERN(A) (A)->pattern
 #define FORMAT(A) (A)->format
 #define DSI_LANES(A) (A)->num_dsi_lanes
 

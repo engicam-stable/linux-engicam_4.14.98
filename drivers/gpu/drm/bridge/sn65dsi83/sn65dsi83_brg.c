@@ -11,7 +11,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
-
+//#define DEBUG
 #include <linux/i2c.h>
 #include <linux/device.h>
 #include <linux/gpio/consumer.h>
@@ -46,6 +46,7 @@
 #define SN65DSI83_PLL_EN             0x0D
 #define SN65DSI83_DSI_CFG            0x10
     #define CHA_DSI_LANES_SHIFT    3
+    #define CHB_DSI_LANES_SHIFT    1
 
 #define SN65DSI83_DSI_EQ              0x11
 #define SN65DSI83_CHA_DSI_CLK_RNG     0x12
@@ -56,7 +57,9 @@
     #define VS_NEG_POLARITY_SHIFT 5
     #define LVDS_LINK_CFG_SHIFT   4
     #define CHA_24BPP_MODE_SHIFT  3
+    #define CHB_24BPP_MODE_SHIFT  2
     #define CHA_24BPP_FMT1_SHIFT  1
+    #define CHB_24BPP_FMT1_SHIFT  0
 
 #define SN65DSI83_LVDS_SIGN           0x19
 #define SN65DSI83_LVDS_TERM           0x1A
@@ -96,7 +99,7 @@
 
 static int sn65dsi83_brg_power_on(struct sn65dsi83_brg *brg)
 {
-    dev_info(&brg->client->dev,"%s\n",__func__);
+    dev_dbg(&brg->client->dev,"%s\n",__func__);
     gpiod_set_value_cansleep(brg->gpio_enable, 1);
     /* Wait for 1ms for the internal voltage regulator to stabilize */
     msleep(1);
@@ -106,7 +109,7 @@ static int sn65dsi83_brg_power_on(struct sn65dsi83_brg *brg)
 
 static void sn65dsi83_brg_power_off(struct sn65dsi83_brg *brg)
 {
-    dev_info(&brg->client->dev,"%s\n",__func__);
+    dev_dbg(&brg->client->dev,"%s\n",__func__);
     gpiod_set_value_cansleep(brg->gpio_enable, 0);
     /*
      * The EN pin must be held low for at least 10 ms
@@ -124,8 +127,6 @@ static int sn65dsi83_write(struct i2c_client *client, u8 reg, u8 val)
     if (ret)
         dev_err(&client->dev, "failed to write at 0x%02x", reg);
 
-    dev_dbg(&client->dev, "%s: write reg 0x%02x data 0x%02x", __func__, reg, val);
-
     return ret;
 }
 #define SN65DSI83_WRITE(reg,val) sn65dsi83_write(client, (reg) , (val))
@@ -134,7 +135,6 @@ static int sn65dsi83_read(struct i2c_client *client, u8 reg)
 {
     int ret;
 
-    dev_info(&client->dev, "client 0x%p", client);
     ret = i2c_smbus_read_byte_data(client, reg);
 
     if (ret < 0) {
@@ -142,18 +142,36 @@ static int sn65dsi83_read(struct i2c_client *client, u8 reg)
         return ret;
     }
 
-    dev_dbg(&client->dev, "%s: read reg 0x%02x data 0x%02x", __func__, reg, ret);
-
     return ret;
 }
 #define SN65DSI83_READ(reg) sn65dsi83_read(client, (reg))
 
-static int sn65dsi83_brg_start_stream(struct sn65dsi83_brg *brg)
+void sn65dsi83_print_error(struct sn65dsi83_brg *brg)
 {
     int regval;
     struct i2c_client *client = I2C_CLIENT(brg);
 
-    dev_info(&client->dev,"%s\n",__func__);
+    regval = SN65DSI83_READ(SN65DSI83_CHA_ERR);
+    dev_dbg(&client->dev, "CHA (0x%02x) = 0x%02x",
+         SN65DSI83_CHA_ERR, regval);
+
+	SN65DSI83_WRITE(SN65DSI83_CHA_ERR, 0xff);
+    regval = SN65DSI83_READ(SN65DSI83_CHA_ERR);
+    dev_dbg(&client->dev, "CHA (0x%02x) = 0x%02x",
+         SN65DSI83_CHA_ERR, regval);
+    msleep(10);
+
+    regval = SN65DSI83_READ(SN65DSI83_CHA_ERR);
+    dev_dbg(&client->dev, "CHA (0x%02x) = 0x%02x",
+         SN65DSI83_CHA_ERR, regval);
+
+}
+
+static int sn65dsi83_brg_start_stream(struct sn65dsi83_brg *brg)
+{
+    struct i2c_client *client = I2C_CLIENT(brg);
+
+    dev_dbg(&client->dev,"%s\n",__func__);
     /* Set the PLL_EN bit (CSR 0x0D.0) */
     SN65DSI83_WRITE(SN65DSI83_PLL_EN, 0x1);
     /* Wait for the PLL_LOCK bit to be set (CSR 0x0A.7) */
@@ -163,19 +181,7 @@ static int sn65dsi83_brg_start_stream(struct sn65dsi83_brg *brg)
     SN65DSI83_WRITE(SN65DSI83_SOFT_RESET, 0x01);
 
     /* Read CHA Error register */
-    regval = SN65DSI83_READ(SN65DSI83_CHA_ERR);
-    dev_info(&client->dev, "CHA (0x%02x) = 0x%02x",
-         SN65DSI83_CHA_ERR, regval);
-
-	SN65DSI83_WRITE(SN65DSI83_CHA_ERR, 0xff);
-    regval = SN65DSI83_READ(SN65DSI83_CHA_ERR);
-    dev_info(&client->dev, "CHA (0x%02x) = 0x%02x",
-         SN65DSI83_CHA_ERR, regval);
-    msleep(10);
-
-    regval = SN65DSI83_READ(SN65DSI83_CHA_ERR);
-    dev_info(&client->dev, "CHA (0x%02x) = 0x%02x",
-         SN65DSI83_CHA_ERR, regval);
+	sn65dsi83_print_error(brg);
 
     return 0;
 }
@@ -183,7 +189,7 @@ static int sn65dsi83_brg_start_stream(struct sn65dsi83_brg *brg)
 static void sn65dsi83_brg_stop_stream(struct sn65dsi83_brg *brg)
 {
     struct i2c_client *client = I2C_CLIENT(brg);
-    dev_info(&client->dev,"%s\n",__func__);
+    dev_dbg(&client->dev,"%s\n",__func__);
     /* Clear the PLL_EN bit (CSR 0x0D.0) */
     SN65DSI83_WRITE(SN65DSI83_PLL_EN, 0x00);
 }
@@ -231,12 +237,17 @@ static int sn65dsi83_calk_div(int min_regval, int max_regval, int min_div,
 
 static int sn65dsi83_brg_configure(struct sn65dsi83_brg *brg)
 {
-    int regval = 0;
+    int regval = 0, i;
     struct i2c_client *client = I2C_CLIENT(brg);
     struct videomode *vm = VM(brg);
+	unsigned long pixelclock;	/* pixelclock in Hz */
 
     u32 dsi_clk = (((PIXCLK * BPP(brg)) / DSI_LANES(brg)) >> 1);
 
+	pixelclock = PIXCLK;
+    if (DUAL_CHANNELS(brg) != 0)
+		pixelclock /= 2;
+    dev_info(&client->dev, "PIXCLK [ %ld ] Hz\n",pixelclock);
     dev_info(&client->dev, "DSI clock [ %u ] Hz\n",dsi_clk);
     dev_info(&client->dev, "GeoMetry [ %d x %d ] Hz\n",HACTIVE,VACTIVE);
 
@@ -245,16 +256,18 @@ static int sn65dsi83_brg_configure(struct sn65dsi83_brg *brg)
     SN65DSI83_WRITE(SN65DSI83_PLL_EN,0x00);
 
     /* LVDS clock setup */
-    if  ((25000000 <= PIXCLK) && (PIXCLK < 37500000))
+    if  ((25000000 <= pixelclock) && (pixelclock < 37500000))
         regval = 0;
     else
         regval = sn65dsi83_calk_clk_range(0x01, 0x05, 37500000, 25000000,
-                    PIXCLK);
+                    pixelclock);
 
     if (regval < 0) {
         dev_err(&client->dev, "failed to configure LVDS clock");
         return -EINVAL;
     }
+
+    dev_dbg(&client->dev, "LVDS_CLK_RANGE_SHIFT [ 0x%x ] \n",regval);
 
     regval = (regval << LVDS_CLK_RANGE_SHIFT);
     regval |= (1 << HS_CLK_SRC_SHIFT); /* Use DSI clock */
@@ -266,23 +279,28 @@ static int sn65dsi83_brg_configure(struct sn65dsi83_brg *brg)
         dev_err(&client->dev, "failed to configure DSI clock range\n");
         return -EINVAL;
     }
+    dev_dbg(&client->dev, "SN65DSI83_CHA_DSI_CLK_RNG [ 0x%x ] \n",regval);
     SN65DSI83_WRITE(SN65DSI83_CHA_DSI_CLK_RNG,regval);
 
     /* DSI clock divider */
-    regval = sn65dsi83_calk_div(0x0, 0x18, 1, 1, dsi_clk, PIXCLK);
+    regval = sn65dsi83_calk_div(0x0, 0x18, 1, 1, dsi_clk, pixelclock);
     if (regval < 0) {
         dev_err(&client->dev, "failed to calculate DSI clock divider");
         return -EINVAL;
     }
-
+	
+    dev_dbg(&client->dev, "SN65DSI83_PLL_DIV (divider) [ 0x%x ] \n",regval);
     regval = regval << DSI_CLK_DIV_SHIFT;
+    dev_dbg(&client->dev, "SN65DSI83_PLL_DIV (regval) [ 0x%x ] \n",regval);
     SN65DSI83_WRITE(SN65DSI83_PLL_DIV,regval);
 
     /* Configure DSI_LANES  */
-    regval = SN65DSI83_READ(SN65DSI83_DSI_CFG);
+	regval =  SN65DSI83_READ(SN65DSI83_DSI_CFG);
     regval &= ~(3 << CHA_DSI_LANES_SHIFT);
+    regval &= ~(3 << CHB_DSI_LANES_SHIFT);
     regval |= ((4 - DSI_LANES(brg)) << CHA_DSI_LANES_SHIFT);
-	printk("DSI lanes = %d.... val = 0x%x\n", (int)DSI_LANES(brg), regval);
+    regval |= ((4 - DSI_LANES(brg)) << CHB_DSI_LANES_SHIFT);
+	dev_dbg(&client->dev, "DSI lanes = %d.... val = 0x%x\n", (int)DSI_LANES(brg), regval);
     SN65DSI83_WRITE(SN65DSI83_DSI_CFG,regval);
 
     /* CHA_DSI_DATA_EQ - No Equalization */
@@ -290,7 +308,7 @@ static int sn65dsi83_brg_configure(struct sn65dsi83_brg *brg)
     SN65DSI83_WRITE(SN65DSI83_DSI_EQ,0x00);
 
     /* Video formats */
-    regval = 0;
+    regval = 0x0;
     if (FLAGS & DISPLAY_FLAGS_HSYNC_LOW)
         regval |= (1 << HS_NEG_POLARITY_SHIFT);
 
@@ -298,17 +316,32 @@ static int sn65dsi83_brg_configure(struct sn65dsi83_brg *brg)
         regval |= (1 << VS_NEG_POLARITY_SHIFT);
 
     if (BPP(brg) == 24)
+	{
         regval |= (1 << CHA_24BPP_MODE_SHIFT);
+        regval |= (1 << CHB_24BPP_MODE_SHIFT);
+	}
 
     if (FORMAT(brg) == 1)
+	{
         regval |= (1 << CHA_24BPP_FMT1_SHIFT);
+        regval |= (1 << CHB_24BPP_FMT1_SHIFT);
+	}
 
-    regval |= (1 << LVDS_LINK_CFG_SHIFT);
-	printk("SN65DSI83_LVDS_MODE = 0x%x\n", regval);
+    if (DUAL_CHANNELS(brg) != 0)
+	{
+	    dev_info(&client->dev, "LVDS DUAL CHANNELS\n");
+	    regval |= (0 << LVDS_LINK_CFG_SHIFT); // DUAL CHANNELS
+	}
+	else
+	{
+	    dev_info(&client->dev, "LVDS SINGLE CHANNEL\n");
+	    regval |= (1 << LVDS_LINK_CFG_SHIFT); // SINGLE CHANNEL
+	}
+	dev_dbg(&client->dev, "SN65DSI83_LVDS_MODE = 0x%x\n", regval);
     SN65DSI83_WRITE(SN65DSI83_LVDS_MODE,regval);
 
     /* Voltage and pins */
-    SN65DSI83_WRITE(SN65DSI83_LVDS_SIGN,0x00);
+    SN65DSI83_WRITE(SN65DSI83_LVDS_SIGN,0x05);
     SN65DSI83_WRITE(SN65DSI83_LVDS_TERM,0x03);
     SN65DSI83_WRITE(SN65DSI83_LVDS_CM_ADJ,0x00);
 
@@ -316,45 +349,68 @@ static int sn65dsi83_brg_configure(struct sn65dsi83_brg *brg)
     SN65DSI83_WRITE(SN65DSI83_CHA_SYNC_DELAY_LO,0x21);
     SN65DSI83_WRITE(SN65DSI83_CHA_SYNC_DELAY_HI,0x00);
 
-    /* Geometry */
-    SN65DSI83_WRITE(SN65DSI83_CHA_LINE_LEN_LO,LOW(HACTIVE));
-    SN65DSI83_WRITE(SN65DSI83_CHA_LINE_LEN_HI,HIGH(HACTIVE));
-
-    SN65DSI83_WRITE(SN65DSI83_CHA_VERT_LINES_LO,LOW(VACTIVE));
-    SN65DSI83_WRITE(SN65DSI83_CHA_VERT_LINES_HI,HIGH(VACTIVE));
+    /* Geometry CHA */
+    if ((PATTERN(brg) != 0) && (DUAL_CHANNELS(brg) != 0))
+	{
+		SN65DSI83_WRITE(SN65DSI83_CHA_LINE_LEN_LO,LOW(HACTIVE/2));
+		SN65DSI83_WRITE(SN65DSI83_CHA_LINE_LEN_HI,HIGH(HACTIVE/2));
+	}
+	else
+	{
+		SN65DSI83_WRITE(SN65DSI83_CHA_LINE_LEN_LO,LOW(HACTIVE));
+		SN65DSI83_WRITE(SN65DSI83_CHA_LINE_LEN_HI,HIGH(HACTIVE));
+	}
 
     SN65DSI83_WRITE(SN65DSI83_CHA_HSYNC_WIDTH_LO,LOW(HPW));
     SN65DSI83_WRITE(SN65DSI83_CHA_HSYNC_WIDTH_HI,HIGH(HPW));
 
-    SN65DSI83_WRITE(SN65DSI83_CHA_VSYNC_WIDTH_LO,LOW(VPW));
-    SN65DSI83_WRITE(SN65DSI83_CHA_VSYNC_WIDTH_HI,HIGH(VPW));
-
     SN65DSI83_WRITE(SN65DSI83_CHA_HORZ_BACKPORCH,LOW(HBP));
-    SN65DSI83_WRITE(SN65DSI83_CHA_VERT_BACKPORCH,LOW(VBP));
-
     SN65DSI83_WRITE(SN65DSI83_CHA_HORZ_FRONTPORCH,LOW(HFP));
-    SN65DSI83_WRITE(SN65DSI83_CHA_VERT_FRONTPORCH,LOW(VFP));
 
-    SN65DSI83_WRITE(SN65DSI83_TEST_PATTERN,0x00);
-    SN65DSI83_WRITE(SN65DSI83_REG_3D,0x00);
-    SN65DSI83_WRITE(SN65DSI83_REG_3E,0x00);
+	SN65DSI83_WRITE(SN65DSI83_CHA_VSYNC_WIDTH_LO, LOW(VPW));
+	SN65DSI83_WRITE(SN65DSI83_CHA_VSYNC_WIDTH_HI, HIGH(VPW));
 
-    /* mute channel B */
-    SN65DSI83_WRITE(SN65DSI83_CHB_DSI_CLK_RNG, 0x00);
-    SN65DSI83_WRITE(SN65DSI83_CHB_LINE_LEN_LO, 0x00);
-    SN65DSI83_WRITE(SN65DSI83_CHB_LINE_LEN_HI, 0x00);
-    SN65DSI83_WRITE(SN65DSI83_CHB_VERT_LINES_LO, 0x00);
-    SN65DSI83_WRITE(SN65DSI83_CHB_VERT_LINES_HI, 0x00);
-    SN65DSI83_WRITE(SN65DSI83_CHB_SYNC_DELAY_LO, 0x00);
-    SN65DSI83_WRITE(SN65DSI83_CHB_SYNC_DELAY_HI, 0x00);
-    SN65DSI83_WRITE(SN65DSI83_CHB_HSYNC_WIDTH_LO, 0x00);
-    SN65DSI83_WRITE(SN65DSI83_CHB_HSYNC_WIDTH_HI, 0x00);
-    SN65DSI83_WRITE(SN65DSI83_CHB_VSYNC_WIDTH_LO, 0x00);
-    SN65DSI83_WRITE(SN65DSI83_CHB_VSYNC_WIDTH_HI, 0x00);
-    SN65DSI83_WRITE(SN65DSI83_CHB_HORZ_BACKPORCH, 0x00);
-    SN65DSI83_WRITE(SN65DSI83_CHB_VERT_BACKPORCH, 0x00);
-    SN65DSI83_WRITE(SN65DSI83_CHB_HORZ_FRONTPORCH, 0x00);
-    SN65DSI83_WRITE(SN65DSI83_CHB_VERT_FRONTPORCH, 0x00);
+	/* mute channel B */
+	SN65DSI83_WRITE(SN65DSI83_CHB_DSI_CLK_RNG, 0x00);
+	SN65DSI83_WRITE(SN65DSI83_CHB_LINE_LEN_LO, 0x00);
+	SN65DSI83_WRITE(SN65DSI83_CHB_LINE_LEN_HI, 0x00);
+	SN65DSI83_WRITE(SN65DSI83_CHB_VERT_LINES_LO, 0x00);
+	SN65DSI83_WRITE(SN65DSI83_CHB_VERT_LINES_HI, 0x00);
+	SN65DSI83_WRITE(SN65DSI83_CHB_SYNC_DELAY_LO, 0x00);
+	SN65DSI83_WRITE(SN65DSI83_CHB_SYNC_DELAY_HI, 0x00);
+	SN65DSI83_WRITE(SN65DSI83_CHB_HSYNC_WIDTH_LO, 0x00);
+	SN65DSI83_WRITE(SN65DSI83_CHB_HSYNC_WIDTH_HI, 0x00);
+	SN65DSI83_WRITE(SN65DSI83_CHB_VSYNC_WIDTH_LO, 0x00);
+	SN65DSI83_WRITE(SN65DSI83_CHB_VSYNC_WIDTH_HI, 0x00);
+	SN65DSI83_WRITE(SN65DSI83_CHB_HORZ_BACKPORCH, 0x00);
+	SN65DSI83_WRITE(SN65DSI83_CHB_VERT_BACKPORCH, 0x00);
+	SN65DSI83_WRITE(SN65DSI83_CHB_HORZ_FRONTPORCH, 0x00);
+	SN65DSI83_WRITE(SN65DSI83_CHB_VERT_FRONTPORCH, 0x00);
+
+	if(PATTERN(brg) != 0)
+	{
+		SN65DSI83_WRITE(SN65DSI83_TEST_PATTERN, 1<<4);
+		SN65DSI83_WRITE(SN65DSI83_CHA_VERT_LINES_LO, LOW(VACTIVE));
+		SN65DSI83_WRITE(SN65DSI83_CHA_VERT_LINES_HI, HIGH(VACTIVE));
+	    SN65DSI83_WRITE(SN65DSI83_CHA_VERT_BACKPORCH, LOW(VBP));
+	    SN65DSI83_WRITE(SN65DSI83_CHA_VERT_FRONTPORCH,LOW(VFP));
+	}
+	else
+	{
+		SN65DSI83_WRITE(SN65DSI83_TEST_PATTERN, 0<<4);
+		SN65DSI83_WRITE(SN65DSI83_CHA_VERT_LINES_LO, 0x00);
+		SN65DSI83_WRITE(SN65DSI83_CHA_VERT_LINES_HI, 0x00);
+	    SN65DSI83_WRITE(SN65DSI83_CHA_VERT_BACKPORCH, 0x00);
+	    SN65DSI83_WRITE(SN65DSI83_CHA_VERT_FRONTPORCH, 0x00);
+	}
+	SN65DSI83_WRITE(SN65DSI83_REG_3D,0x00);
+	SN65DSI83_WRITE(SN65DSI83_REG_3E,0x00);
+
+	for (i=0x09; i<=0x3e; i++)
+	{
+		regval =  SN65DSI83_READ(i);
+		dev_dbg(&client->dev, "addr=0x%x regval=0x%x \n", i, regval);
+	}
     return 0;
 }
 

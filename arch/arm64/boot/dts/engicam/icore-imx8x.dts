@@ -105,10 +105,10 @@
 		status = "okay";
 
 		panel-timing {
-			/* 1024x800 @65Hz */
+			/* 1024x600 @65Hz */
 			clock-frequency = <65000000>;
 			hactive = <1024>;
-			vactive = <800>;
+			vactive = <600>;
 			hsync-len = <136>;
 			hfront-porch = <20>;
 			hback-porch = <160>;
@@ -261,6 +261,7 @@
 		pinctrl_touch1: touch1_intgrp {
 			fsl,pins = <
 				SC_P_QSPI0A_DATA1_LSIO_GPIO3_IO10	0x06000020
+				SC_P_SPI0_CS1_LSIO_GPIO1_IO07 		0x06000020
 			>;
 		};
 
@@ -655,15 +656,16 @@
             VDDD-supply = <&reg_1v8>;
     };
 
-	polytouch: edt-ft5x06@38 {
-		compatible = "edt,edt-ft5406";
-		reg = <0x38>;
-		pinctrl-names = "default";		
-		pinctrl-0 = <&pinctrl_touch1>;
-		interrupt-parent = <&gpio3>;
-		interrupts = <10 0>;	
-//		reset-gpios = <&gpio6 0 1>;
-};
+    polytouch: edt-ft5x26@38 {
+                compatible = "edt,edt-ft5526";
+                reg = <0x38>;
+                pinctrl-names = "default";
+                pinctrl-0 = <&pinctrl_touch1>;
+                interrupt-parent = <&gpio3>;
+                interrupts = <10 IRQ_TYPE_EDGE_FALLING>;
+                reset-gpios= <&gpio1 7 GPIO_ACTIVE_LOW>;
+    };
+
 };
 
 &sai0 {

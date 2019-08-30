@@ -24,7 +24,15 @@
 		bootargs = "console=ttyLP0,115200 earlycon=lpuart32,0x5a060000,115200";
 		stdout-path = &lpuart0;
 	};
+  
+	lvds_backlight0: lvds_backlight@0 {
+		compatible = "pwm-backlight";
+		pwms = <&pwm_mipi_lvds0 0 100000 0>;
+		brightness-levels = < 0  1  2  3  4  5  6  7>;
+		default-brightness-level = <5>;
 
+	};
+    
 	bcmdhd_wlan_0: bcmdhd_wlan@0 {
 		compatible = "android,bcmdhd_wlan";
 		bcmdhd_fw = "/lib/firmware/bcm/1FD_BCM89359/fw_bcmdhd.bin";
@@ -154,6 +162,12 @@
 
 };
 
+&pwm_mipi_lvds0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_pwm_mipi_lvds0>;
+	status = "okay";
+};
+
 &acm {
 	status = "okay";
 };
@@ -247,10 +261,11 @@
 	pinctrl-0 = <&pinctrl_hog>;
 
 	imx8qxp-mek {
+
 		pinctrl_hog: hoggrp {
 			fsl,pins = <
 				SC_P_MCLK_OUT0_ADMA_ACM_MCLK_OUT0	0x0600004c
-                SC_P_MIPI_DSI0_GPIO0_00_LSIO_GPIO1_IO27 0x06000020 /* TDB MM backligth LVDS0 */
+               // SC_P_MIPI_DSI0_GPIO0_00_LSIO_GPIO1_IO27 0x06000020 /* TDB MM backligth LVDS0 */
                 SC_P_MIPI_DSI1_GPIO0_00_LSIO_GPIO1_IO31 0x06000020 /* TDB MM backligth LVDS1 */
                 SC_P_MIPI_CSI0_MCLK_OUT_LSIO_GPIO3_IO04 0x06000020 /* TDB MM RGMII reset */
                 SC_P_MIPI_CSI0_GPIO0_00_LSIO_GPIO3_IO08 0x06000020 /* TDB MM RGMII2 reset */
@@ -528,6 +543,13 @@
 				SC_P_PCIE_CTRL0_WAKE_B_LSIO_GPIO4_IO02		0x06000021
 			>;
 		};
+    
+		pinctrl_pwm_mipi_lvds0: mipi_lvds0_pwm_grp {
+			fsl,pins = <
+				SC_P_MIPI_DSI0_GPIO0_00_MIPI_DSI0_PWM0_OUT	0x00000020
+			>;
+		};    
+    
 	};
 };
 
@@ -870,3 +892,4 @@
 &vpu {
 	status = "okay";
 };
+

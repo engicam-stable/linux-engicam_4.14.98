@@ -28,9 +28,8 @@
 	lvds_backlight0: lvds_backlight@0 {
 		compatible = "pwm-backlight";
 		pwms = <&pwm_mipi_lvds0 0 100000 0>;
-		brightness-levels = < 0  1  2  3  4  5  6  7>;
-		default-brightness-level = <5>;
-
+		brightness-levels = <0 4 8 16 32 64 128 255>;
+		default-brightness-level = <6>;
 	};
     
 	bcmdhd_wlan_0: bcmdhd_wlan@0 {
@@ -262,12 +261,20 @@
 
 	imx8qxp-mek {
 
+    pinctrl_mipi_csi0: mipicsi0grp{
+			fsl,pins = <
+				//SC_P_MIPI_CSI0_MCLK_OUT_MIPI_CSI0_ACM_MCLK_OUT	0xC0000041
+				SC_P_SPI3_SDO_LSIO_GPIO0_IO14		0xC0000041
+				SC_P_QSPI0B_SCLK_LSIO_GPIO3_IO17		0xC0000041
+			>;
+		};    
+    
 		pinctrl_hog: hoggrp {
 			fsl,pins = <
 				SC_P_MCLK_OUT0_ADMA_ACM_MCLK_OUT0	0x0600004c
-               // SC_P_MIPI_DSI0_GPIO0_00_LSIO_GPIO1_IO27 0x06000020 /* TDB MM backligth LVDS0 */
-                SC_P_MIPI_DSI1_GPIO0_00_LSIO_GPIO1_IO31 0x06000020 /* TDB MM backligth LVDS1 */
-                SC_P_MIPI_CSI0_MCLK_OUT_LSIO_GPIO3_IO04 0x06000020 /* TDB MM RGMII reset */
+                SC_P_MIPI_DSI0_GPIO0_00_LSIO_GPIO1_IO27 0x06000020 /* backligth LVDS0 */
+                SC_P_MIPI_DSI1_GPIO0_00_LSIO_GPIO1_IO31 0x06000020 /* backligth LVDS1 */
+                SC_P_MIPI_CSI0_MCLK_OUT_LSIO_GPIO3_IO04 0x06000020 /* RGMII reset */
                 SC_P_MIPI_CSI0_GPIO0_00_LSIO_GPIO3_IO08 0x06000020 /* TDB MM RGMII2 reset */
                 SC_P_QSPI0B_DATA3_LSIO_GPIO3_IO21 0x06000020 /* TDB MM USB HUB reset */
 			>;
@@ -658,6 +665,27 @@
 	pinctrl-0 = <&pinctrl_lpi2c1>;
 	status = "okay";
 
+  ov5640_mipi: ov5640_mipi@3c {
+		compatible = "ovti,ov5640_mipi_v3";
+		reg = <0x3c>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_mipi_csi0>;
+		clocks = <&clk IMX8QXP_24MHZ>;
+		clock-names = "csi_mclk";
+		csi_id = <0>;
+		pwn-gpios = <&gpio3 17 GPIO_ACTIVE_LOW>;
+		rst-gpios = <&gpio0 14 GPIO_ACTIVE_HIGH>;
+		mclk = <24000000>;
+		mclk_source = <0>;
+		mipi_csi;
+		status = "okay";
+		port {
+			ov5640_mipi_ep: endpoint {
+				remote-endpoint = <&mipi_csi0_ep>;
+			};
+		};
+	};
+  
     sgtl5000: codec@a {
             compatible = "fsl,sgtl5000";
             status = "okay";
@@ -832,17 +860,15 @@
 };
 
 &mipi_csi_0 {
-	#address-cells = <1>;
+  #address-cells = <1>;
 	#size-cells = <0>;
-	virtual-channel;
 	status = "okay";
 
-	/* Camera 0  MIPI CSI-2 (CSIS0) */
 	port@0 {
 		reg = <0>;
 		mipi_csi0_ep: endpoint {
-			remote-endpoint = <&max9286_0_ep>;
-			data-lanes = <1 2 3 4>;
+			remote-endpoint = <&ov5640_mipi_ep>;
+			data-lanes = <1 2>;
 		};
 	};
 };
@@ -863,7 +889,7 @@
 	status = "okay";
 };
 
-&i2c0_csi0 {
+/*&i2c0_csi0 {
 	#address-cells = <1>;
 	#size-cells = <0>;
 	pinctrl-names = "default";
@@ -887,7 +913,7 @@
 			};
 		};
 	};
-};
+};*/
 
 &vpu {
 	status = "okay";

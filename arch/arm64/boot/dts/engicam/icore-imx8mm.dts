@@ -839,6 +839,14 @@
 	status = "okay";
 };
 
+&uart4 { /* rs232 */
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart4>;
+	status = "okay";
+};
+
+
+
 &usbotg1 {
 	dr_mode = "otg";
 //	extcon = <0>, <&typec1_ptn5110>;

@@ -101,14 +101,12 @@ static int imx2_wdt_restart(struct watchdog_device *wdog, unsigned long action,
 	struct imx2_wdt_device *wdev = watchdog_get_drvdata(wdog);
 	unsigned int wcr_enable = IMX2_WDT_WCR_WDE;
 
-// [ENG] for using both internal and external reset source
-#if 0
     /* Use internal reset or external - not both */
 	if (wdev->ext_reset)
 		wcr_enable |= IMX2_WDT_WCR_SRS; /* do not assert int reset */
 	else
 		wcr_enable |= IMX2_WDT_WCR_WDA; /* do not assert ext-reset */
-#endif
+
 	/* Assert SRS signal */
 	regmap_write(wdev->regmap, IMX2_WDT_WCR, wcr_enable);
 

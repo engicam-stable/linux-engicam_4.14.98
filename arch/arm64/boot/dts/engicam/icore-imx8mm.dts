@@ -27,7 +27,16 @@
 		bootargs = "console=ttymxc1,115200 earlycon=ec_imx6q,0x30890000,115200";
 		stdout-path = &uart2;
 	};
-
+	
+	gpio-restart {
+        compatible = "gpio-restart";
+        gpios = <&gpio1 2 1>;
+        priority = <128>;
+        active-delay = <100>;
+        inactive-delay = <100>;
+        wait-delay = <3000>;
+    };
+	
     backlight_lvds: backlight_lvds {
             compatible = "pwm-backlight";
             pinctrl-names = "default";
@@ -406,7 +415,7 @@
 		
 		pinctrl_wdog: wdoggrp {
 			fsl,pins = <
-				MX8MM_IOMUXC_GPIO1_IO02_WDOG1_WDOG_B		0xc6
+				MX8MM_IOMUXC_GPIO1_IO02_GPIO1_IO2		0x19
 			>;
 		};
 	};

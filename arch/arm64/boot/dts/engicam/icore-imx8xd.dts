@@ -272,11 +272,11 @@
 		pinctrl_hog: hoggrp {
 			fsl,pins = <
 				SC_P_MCLK_OUT0_ADMA_ACM_MCLK_OUT0	0x0600004c
-                SC_P_MIPI_DSI0_GPIO0_00_LSIO_GPIO1_IO27 0x06000020 /* backligth LVDS0 */
-                SC_P_MIPI_DSI1_GPIO0_00_LSIO_GPIO1_IO31 0x06000020 /* backligth LVDS1 */
-                SC_P_MIPI_CSI0_MCLK_OUT_LSIO_GPIO3_IO04 0x06000020 /* RGMII reset */
-                SC_P_MIPI_CSI0_GPIO0_00_LSIO_GPIO3_IO08 0x06000020 /* TDB MM RGMII2 reset */
-                SC_P_QSPI0B_DATA3_LSIO_GPIO3_IO21 0x06000020 /* TDB MM USB HUB reset */
+       // SC_P_MIPI_DSI0_GPIO0_00_LSIO_GPIO1_IO27 0x06000020 /* backligth LVDS0 */
+        SC_P_MIPI_DSI1_GPIO0_00_LSIO_GPIO1_IO31 0x06000020 /* backligth LVDS1 */
+        SC_P_MIPI_CSI0_MCLK_OUT_LSIO_GPIO3_IO04 0x06000020 /* RGMII reset */
+        SC_P_MIPI_CSI0_GPIO0_00_LSIO_GPIO3_IO08 0x06000020 /* TDB MM RGMII2 reset */
+        SC_P_QSPI0B_DATA3_LSIO_GPIO3_IO21 0x06000020 /* TDB MM USB HUB reset */
 			>;
 		};
 
@@ -435,6 +435,13 @@
 			>;
 		};
 
+		pinctrl_lpi2c3: lpi2cgrp {
+			fsl,pins = <
+				SC_P_SPI3_CS1_ADMA_I2C3_SCL	0x06000020
+				SC_P_MCLK_IN1_ADMA_I2C3_SDA	0x06000020
+			>;
+		};
+    
 		pinctrl_sai0: sai0grp {
 			fsl,pins = <
 				SC_P_SAI0_RXD_ADMA_SAI0_RXD	0x0600004c
@@ -647,7 +654,7 @@
 	status = "okay";
 };
 
-&i2c0_cm40 {
+/*&i2c0_cm40 {
 	#address-cells = <1>;
 	#size-cells = <0>;
 	clock-frequency = <100000>;
@@ -655,7 +662,7 @@
 	pinctrl-0 = <&pinctrl_cm40_i2c>;
 	status = "okay";
 
-};
+};*/
 
 &i2c1 {
 	#address-cells = <1>;
@@ -718,6 +725,15 @@
 
 };
 
+&i2c3 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	clock-frequency = <100000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_lpi2c3>;
+	status = "okay";
+};
+  
 &sai0 {
 	assigned-clocks = <&clk IMX8QXP_AUD_PLL0_DIV>,
 			<&clk IMX8QXP_AUD_ACM_AUD_PLL_CLK0_DIV>,
@@ -765,9 +781,9 @@
 	pinctrl-1 = <&pinctrl_usdhc2_100mhz>, <&pinctrl_usdhc2_gpio>;
 	pinctrl-2 = <&pinctrl_usdhc2_200mhz>, <&pinctrl_usdhc2_gpio>;
 	bus-width = <4>;
-//	cd-gpios = <&gpio4 22 GPIO_ACTIVE_LOW>;
+	cd-gpios = <&gpio4 22 GPIO_ACTIVE_LOW>;
 //	wp-gpios = <&gpio4 21 GPIO_ACTIVE_HIGH>;
-	non-removable;
+//	non-removable;
 	vmmc-supply = <&reg_usdhc2_vmmc>;
 	status = "okay";
 };
@@ -777,9 +793,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pcieb>;
 	clkreq-gpio = <&gpio4 1 GPIO_ACTIVE_LOW>;
-//	disable-gpio = <&pca9557_a 2 GPIO_ACTIVE_LOW>;
 	reset-gpio = <&gpio4 0 GPIO_ACTIVE_LOW>;
-//	epdev_on-supply = <&epdev_on>;
 	status = "okay";
 };
 

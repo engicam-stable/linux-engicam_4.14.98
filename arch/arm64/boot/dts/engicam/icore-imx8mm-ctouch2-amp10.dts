@@ -47,6 +47,34 @@
             status = "okay";
     };
 
+	leds {
+		compatible = "gpio-leds";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_gpio_led>;
+
+		status {
+			label = "status";
+			gpios = <&gpio3 16 0>;
+			default-state = "on";
+		};
+	};
+
+	modem_reset: modem-reset {
+		compatible = "gpio-reset";
+		reset-gpios = <&gpio2 6 GPIO_ACTIVE_LOW>;
+		reset-delay-us = <2000>;
+		reset-post-delay-ms = <40>;
+		#reset-cells = <0>;
+	};
+
+	usb_hub_reset: usb-hub-reset {
+		compatible = "gpio-reset";
+		reset-gpios = <&gpio1 9 GPIO_ACTIVE_LOW>;
+		reset-delay-us = <2000>;
+		reset-post-delay-ms = <40>;
+		#reset-cells = <0>;
+	};
+
 };
 
 &pwm1{
@@ -390,7 +418,6 @@
 		};
 	};
 };
-
 
 &i2c1 {
 	clock-frequency = <400000>;

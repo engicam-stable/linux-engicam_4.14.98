@@ -17,7 +17,7 @@
 
 #include "../freescale/fsl-imx8mm.dtsi"
 #include "icore-imx8mm-sgtl5000.dtsi"
-#include "icore-imx8mm-laird.dtsi"
+
 //#define FULL_HD_PANEL
 / {
 	model = "Engicam i.Core MX8MM module";
@@ -78,9 +78,7 @@
 };
 
 &pwm1{
-
     status = "okay";
-    
 };
 
 &clk {
@@ -296,8 +294,8 @@
 			fsl,pins = <
 				MX8MM_IOMUXC_UART3_RXD_UART3_DCE_RX		0x140
 				MX8MM_IOMUXC_UART3_TXD_UART3_DCE_TX		0x140
-				MX8MM_IOMUXC_ECSPI1_SS0_UART3_DCE_RTS_B		0x140
-				MX8MM_IOMUXC_ECSPI1_MISO_UART3_DCE_CTS_B	0x140
+				MX8MM_IOMUXC_ECSPI1_SS0_UART3_DTE_CTS_B		0x140
+				MX8MM_IOMUXC_ECSPI1_MISO_UART3_DTE_RTS_B	0x140
 			>;
 		};
 
@@ -831,7 +829,6 @@
 &wdog1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_wdog>;
-	fsl,ext-reset-output;
 	status = "okay";
 };
 
@@ -855,4 +852,53 @@
 	status = "okay";
 };
 
+
+/ {
+    regulators {
+    wlreg_on: fixedregulator@100 {
+        compatible = "regulator-fixed";
+        regulator-name = "wlreg_on";
+        regulator-min-microvolt = <3300000>;
+        regulator-max-microvolt = <3300000>;
+        gpio = <&gpio3 22 1>;
+        enable-active-high;
+        regulator-always-on; 
+        };
+
+    btreg_on: fixedregulator@200 {
+        compatible = "regulator-fixed";
+        regulator-name = "btreg_on";
+        regulator-min-microvolt = <3300000>;
+        regulator-max-microvolt = <3300000>;
+        gpio = <&gpio3 23 1>;
+        enable-active-high;
+        regulator-always-on; 
+        };
+    };
+};
+
+&usdhc2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_usdhc2>, <&pinctrl_laird>;
+	bus-width = <4>;	
+    no-1-8-v;
+    non-removable;
+    vmmc-supply = <&wlreg_on>, <&btreg_on>;
+    wifi-host;
+    broken-cd;
+    status = "okay";
+};
+
+
+&iomuxc {
+    	icore-imx8mm {
+        pinctrl_laird: lairdgrp {
+            fsl,pins = <
+                MX8MM_IOMUXC_GPIO1_IO04_GPIO1_IO4        0x19
+				MX8MM_IOMUXC_SD2_WP_GPIO2_IO20  		 0x19
+				MX8MM_IOMUXC_GPIO1_IO05_GPIO1_IO5		 0x19
+            >;
+        };
+    };
+};
 

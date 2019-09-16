@@ -17,7 +17,6 @@
 
 #include "../freescale/fsl-imx8mm.dtsi"
 #include "icore-imx8mm-sgtl5000.dtsi"
-#include "icore-imx8mm-laird.dtsi"
 
 / {
 	model = "Engicam i.Core MX8MM module";
@@ -187,13 +186,6 @@
 			>;
 		};
 
-		pinctrl_pcie0: pcie0grp {
-			fsl,pins = <
-				MX8MM_IOMUXC_SAI5_RXD3_GPIO3_IO24	0x41
-				MX8MM_IOMUXC_SAI2_TXC_GPIO4_IO25	0x41
-			>;
-		};
-
 		pinctrl_pmic: pmicirq {
 			fsl,pins = <
 				MX8MM_IOMUXC_GPIO1_IO03_GPIO1_IO3		0x41
@@ -253,18 +245,6 @@
 				MX8MM_IOMUXC_SAI3_MCLK_SAI3_MCLK        0xd6
 				MX8MM_IOMUXC_SAI3_TXD_SAI3_TX_DATA0     0xd6
 				MX8MM_IOMUXC_SAI3_RXD_SAI3_RX_DATA0		0xd6
-			>;
-		};
-
-		pinctrl_pdm: pdmgrp {
-			fsl,pins = <
-				MX8MM_IOMUXC_SAI5_MCLK_SAI5_MCLK	0xd6
-				MX8MM_IOMUXC_SAI5_RXC_PDM_CLK		0xd6
-				MX8MM_IOMUXC_SAI5_RXFS_SAI5_RX_SYNC	0xd6
-				MX8MM_IOMUXC_SAI5_RXD0_PDM_DATA0	0xd6
-				MX8MM_IOMUXC_SAI5_RXD1_PDM_DATA1	0xd6
-				MX8MM_IOMUXC_SAI5_RXD2_PDM_DATA2	0xd6
-				MX8MM_IOMUXC_SAI5_RXD3_PDM_DATA3	0xd6
 			>;
 		};
 
@@ -347,12 +327,12 @@
 
 		pinctrl_usdhc2: usdhc2grp {
 			fsl,pins = <
-				MX8MM_IOMUXC_SD2_CLK_USDHC2_CLK		0x190
-				MX8MM_IOMUXC_SD2_CMD_USDHC2_CMD		0x1d0
-				MX8MM_IOMUXC_SD2_DATA0_USDHC2_DATA0	0x1d0
-				MX8MM_IOMUXC_SD2_DATA1_USDHC2_DATA1	0x1d0
-				MX8MM_IOMUXC_SD2_DATA2_USDHC2_DATA2	0x1d0
-				MX8MM_IOMUXC_SD2_DATA3_USDHC2_DATA3	0x1d0
+				MX8MM_IOMUXC_SD2_CLK_USDHC2_CLK		0x194
+				MX8MM_IOMUXC_SD2_CMD_USDHC2_CMD		0x1d4
+				MX8MM_IOMUXC_SD2_DATA0_USDHC2_DATA0	0x1d4
+				MX8MM_IOMUXC_SD2_DATA1_USDHC2_DATA1	0x1d4
+				MX8MM_IOMUXC_SD2_DATA2_USDHC2_DATA2	0x1d4
+				MX8MM_IOMUXC_SD2_DATA3_USDHC2_DATA3	0x1d4
 			>;
 		};
 
@@ -643,15 +623,6 @@
 	};
 };
 
-&pcie0{
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_pcie0>;
-	disable-gpio = <&gpio4 25 GPIO_ACTIVE_LOW>;
-	reset-gpio = <&gpio3 24 GPIO_ACTIVE_LOW>;
-	ext_osc = <1>;
-	status = "okay";
-};
-
 &uart1 { /* RS485 */
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart1>;
@@ -754,5 +725,44 @@
 &vpu_h1 {
 	status = "okay";
 };
+
+
+/ {
+    regulators {
+    wlreg_on: fixedregulator@100 {
+        compatible = "regulator-fixed";
+        regulator-name = "wlreg_on";
+        regulator-min-microvolt = <3300000>;
+        regulator-max-microvolt = <3300000>;
+        gpio = <&gpio3 22 1>;
+        enable-active-high;
+        };
+    };
+};
+
+&usdhc2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_usdhc2>, <&pinctrl_laird>;
+	bus-width = <4>;	
+    no-1-8-v;
+    non-removable;
+    vmmc-supply = <&wlreg_on>;
+    wifi-host;
+    broken-cd;
+    status = "okay";
+};
+
+
+&iomuxc {
+    	icore-imx8mm {
+        pinctrl_laird: lairdgrp {
+            fsl,pins = <
+                MX8MM_IOMUXC_SAI5_RXD2_GPIO3_IO23        0x1C0
+				MX8MM_IOMUXC_SAI5_RXD1_GPIO3_IO22        0x1C0
+            >;
+        };
+    };
+};
+
 
 

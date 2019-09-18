@@ -277,6 +277,7 @@
         SC_P_MIPI_CSI0_MCLK_OUT_LSIO_GPIO3_IO04 0x06000020 /* RGMII reset */
         SC_P_MIPI_CSI0_GPIO0_00_LSIO_GPIO3_IO08 0x06000020 /* TDB MM RGMII2 reset */
         SC_P_QSPI0B_DATA3_LSIO_GPIO3_IO21 0x06000020 /* TDB MM USB HUB reset */
+        SC_P_SPI3_SCK_LSIO_GPIO0_IO13 0x06000020
 			>;
 		};
 
@@ -580,7 +581,7 @@
 &lpuart1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_lpuart1>;
-    fsl,uart-has-rtscts;
+    //fsl,uart-has-rtscts;
 //	resets = <&modem_reset>;
 	status = "okay";
 };
@@ -589,13 +590,16 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_lpuart2>;
 	status = "okay";
+  linux,rs485-enabled-at-boot-time;
+  fsl,rs485-cts-gpio = <&gpio0 13 1>;
 };
 
-&lpuart3 {
+/*&lpuart3 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_lpuart3>;
+  linux,rs485-enabled-at-boot-time;
 	status = "okay";
-};
+};*/
 
 &fec1 {
 	pinctrl-names = "default";
@@ -654,15 +658,14 @@
 	status = "okay";
 };
 
-/*&i2c0_cm40 {
+&i2c0_cm40 {
 	#address-cells = <1>;
 	#size-cells = <0>;
 	clock-frequency = <100000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_cm40_i2c>;
 	status = "okay";
-
-};*/
+};
 
 &i2c1 {
 	#address-cells = <1>;

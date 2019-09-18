@@ -2821,9 +2821,9 @@
 		assigned-clocks = <&clk IMX8QXP_UART2_CLK>;
 		assigned-clock-rates = <80000000>;
 		power-domains = <&pd_dma2_chan13>;
-		dma-names = "tx","rx";
+	/*	dma-names = "tx","rx";
 		dmas = <&edma2 13 0 0>,
-			<&edma2 12 0 1>;
+			<&edma2 12 0 1>;*/
 		status = "disabled";
 	};
 

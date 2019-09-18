@@ -28,6 +28,7 @@
 #include <linux/of_dma.h>
 #include <linux/pm_runtime.h>
 #include <linux/reset.h>
+#include <linux/of_gpio.h>
 #include <linux/serial_core.h>
 #include <linux/slab.h>
 #include <linux/tty_flip.h>
@@ -267,7 +268,8 @@ struct lpuart_port {
 	unsigned int		rxfifo_size;
 	unsigned int		txfifo_watermark;
 	unsigned int		rxfifo_watermark;
-
+  unsigned int    rs485_cts_gpio;
+  unsigned int    write_delay;
 	unsigned int		rts_watermark;
 	bool			dma_eeop;
 
@@ -384,6 +386,30 @@ static int lpuart_hw_reset(struct lpuart_port *sport)
 	return 0;
 }
 
+/*
+ * Enable the transmitter of the rs485 transceiver
+ */
+static void lpuart32_rs485_cts_ctrl(struct lpuart_port *sport, bool enable)
+{
+	//unsigned long temp;
+
+	/*
+	 * SER_RS485_RTS_ON_SEND / SER_RS485_RTS_AFTER_SEND
+	 * define active high/low levels, they are exclusive
+	 */
+	/*if (sport->port.rs485.flags & SER_RS485_RTS_AFTER_SEND)
+  {
+		enable = !enable;
+  }*/
+  
+	if (gpio_is_valid(sport->rs485_cts_gpio)) 
+  {
+    //printk("GPIO=%x\n", enable);
+		gpio_set_value(sport->rs485_cts_gpio, enable);
+	} 
+}
+
+
 static void lpuart_stop_tx(struct uart_port *port)
 {
 	unsigned char temp;
@@ -396,10 +422,22 @@ static void lpuart_stop_tx(struct uart_port *port)
 static void lpuart32_stop_tx(struct uart_port *port)
 {
 	unsigned long temp;
+  
+  struct lpuart_port *sport = container_of(port, struct lpuart_port, port);
 
-	temp = lpuart32_read(port, UARTCTRL);
-	temp &= ~(UARTCTRL_TIE | UARTCTRL_TCIE);
-	lpuart32_write(port, temp, UARTCTRL);
+	//else
+  {
+    temp = lpuart32_read(port, UARTCTRL);
+    temp &= ~(UARTCTRL_TIE | UARTCTRL_TCIE);
+    lpuart32_write(port, temp, UARTCTRL);
+  }
+    if (gpio_is_valid(sport->rs485_cts_gpio))
+  {
+    //printk("%s\n", __FUNCTION__);
+    udelay(sport->write_delay);
+    lpuart32_rs485_cts_ctrl(sport, false);
+   
+  }
 }
 
 static void lpuart_stop_rx(struct uart_port *port)
@@ -757,6 +795,11 @@ static void lpuart32_start_tx(struct uart_port *port)
 		if (!uart_circ_empty(xmit) && !uart_tx_stopped(port))
 			lpuart_dma_tx(sport);
 	} else {
+	    if ( gpio_is_valid(sport->rs485_cts_gpio))
+    {
+      lpuart32_rs485_cts_ctrl(sport, true);
+      //printk("%s\n", __FUNCTION__);
+    }
 		temp = lpuart32_read(port, UARTCTRL);
 		lpuart32_write(port, temp | UARTCTRL_TIE, UARTCTRL);
 		if (lpuart32_read(&sport->port, UARTSTAT) & UARTSTAT_TDRE)
@@ -1264,6 +1307,50 @@ static int lpuart_config_rs485(struct uart_port *port,
 	return 0;
 }
 
+static int lpuart32_config_rs485(struct uart_port *port,
+	struct serial_rs485 *rs485)
+{
+	if (rs485->flags & SER_RS485_ENABLED) {
+
+		u32 modem = lpuart32_read(port, UARTMODIR) &
+			~(UARTMODIR_TXRTSPOL | UARTMODIR_TXRTSE);
+
+		/* Enable auto RS-485 RTS mode */
+		modem |= UARTMODIR_TXRTSE;
+
+		/*
+		 * RTS needs to be logic HIGH either during transer _or_ after
+		 * transfer, other variants are not supported by the hardware.
+		 */
+
+		if (!(rs485->flags & (SER_RS485_RTS_ON_SEND |
+				SER_RS485_RTS_AFTER_SEND)))
+		    rs485->flags |= SER_RS485_RTS_ON_SEND;
+
+		if (rs485->flags & SER_RS485_RTS_ON_SEND &&
+			rs485->flags & SER_RS485_RTS_AFTER_SEND)
+		    rs485->flags &= ~SER_RS485_RTS_AFTER_SEND;
+
+		/*
+		 * The hardware defaults to RTS logic HIGH while transfer.
+		 * Switch polarity in case RTS shall be logic HIGH
+		 * after transfer.
+		 * Note: UART is assumed to be active high.
+		 */
+		if (rs485->flags & SER_RS485_RTS_AFTER_SEND)
+		    modem &= ~UARTMODIR_TXRTSPOL;
+		else if (rs485->flags & SER_RS485_RTS_ON_SEND)
+		    modem |= UARTMODIR_TXRTSPOL;
+
+		/* Store the new configuration */
+		port->rs485 = *rs485;
+
+		lpuart32_write(port, modem, UARTMODIR);
+	}
+
+	return 0;
+}
+
 static unsigned int lpuart_get_mctrl(struct uart_port *port)
 {
 	unsigned int temp = 0;
@@ -1330,6 +1417,20 @@ static void lpuart32_set_mctrl(struct uart_port *port, unsigned int mctrl)
 		temp &= ~UARTCTRL_LOOPS;
 
 	lpuart32_write(port, temp, UARTCTRL);
+
+	/* Make sure RXRTSE bit is not set when RS485 is enabled */
+	if (!(port->rs485.flags & SER_RS485_ENABLED)) {
+		temp = lpuart32_read(port, UARTMODIR) &
+			~(UARTMODIR_RXRTSE | UARTMODIR_TXCTSE);
+
+		if (mctrl & TIOCM_RTS)
+			temp |= UARTMODIR_RXRTSE;
+
+		if (mctrl & TIOCM_CTS)
+			temp |= UARTMODIR_TXCTSE;
+
+		lpuart32_write(port, temp, UARTMODIR);
+	}
 }
 
 static void lpuart_break_ctl(struct uart_port *port, int break_state)
@@ -1417,7 +1518,8 @@ static void lpuart32_setup_watermark(struct lpuart_port *sport)
 			(0x0 << UARTWATER_TXWATER_OFF);
 	} else {
 		val = lpuart32_read(&sport->port, UARTMODIR);
-		val = sport->rts_watermark << UARTMODIR_RTSWATER_S;
+		val &= ~(UARTMODIR_RTSWATER_M);
+		val |= sport->rts_watermark << UARTMODIR_RTSWATER_S;
 		lpuart32_write(&sport->port, val, UARTMODIR);
 		val = (sport->rxfifo_watermark << UARTWATER_RXWATER_OFF) |
 			(sport->txfifo_watermark << UARTWATER_TXWATER_OFF);
@@ -1936,6 +2038,22 @@ lpuart32_set_termios(struct uart_port *port, struct ktermios *termios,
 		ctrl |= UARTCTRL_M;
 	}
 
+	/*
+	 * When auto RS-485 RTS mode is enabled,
+	 * hardware flow control need to be disabled.
+	 */
+	if (sport->port.rs485.flags & SER_RS485_ENABLED) {
+		termios->c_cflag &= ~CRTSCTS;
+
+		/* Enable auto RS-485 RTS mode */
+		modem |= UARTMODIR_TXRTSE;
+
+		if (sport->port.rs485.flags & SER_RS485_RTS_AFTER_SEND)
+			modem &= ~UARTMODIR_TXRTSPOL;
+		else if (sport->port.rs485.flags & SER_RS485_RTS_ON_SEND)
+			modem |= UARTMODIR_TXRTSPOL;
+	}
+
 	if (termios->c_cflag & CRTSCTS) {
 		modem |= (UARTMODEM_RXRTSE | UARTMODEM_TXCTSE);
 	} else {
@@ -1969,7 +2087,38 @@ lpuart32_set_termios(struct uart_port *port, struct ktermios *termios,
 
 	/* ask the core to calculate the divisor */
 	baud = uart_get_baud_rate(port, termios, old, 50, port->uartclk / 4);
+  switch (baud)
+  {
+    case 4800:
+      sport->write_delay = 1250;
+      break;
+    
+    case 9600:
+      sport->write_delay = 1130;
+      break;
 
+    case 19200:
+      sport->write_delay = 580;
+      break;
+      
+    case 38400:
+      sport->write_delay = 300;
+      break;
+
+    case 57600:
+      sport->write_delay = 200;
+      break;
+    
+    case 115200:
+      sport->write_delay = 100;
+      break;      
+ 	
+    default: 
+      sport->write_delay = 0;
+      break;
+  }
+//  printk("WRITE_DELAY=%d\n", sport->write_delay);
+  
 	spin_lock_irqsave(&sport->port.lock, flags);
 
 	sport->port.read_status_mask = 0;
@@ -2425,6 +2574,12 @@ static struct uart_driver lpuart_reg = {
 	.cons		= LPUART_CONSOLE,
 };
 
+static void uart_get_rs485_mode(struct device *dev, struct serial_rs485 *rs485)
+{
+	rs485->flags |= SER_RS485_ENABLED;
+	rs485->flags |= SER_RS485_RTS_ON_SEND;
+}
+
 static int lpuart_probe(struct platform_device *pdev)
 {
 	const struct of_device_id *of_id = of_match_device(lpuart_dt_ids,
@@ -2476,7 +2631,9 @@ static int lpuart_probe(struct platform_device *pdev)
 		sport->port.ops = &lpuart_pops;
 	sport->port.flags = UPF_BOOT_AUTOCONF;
 
-	if (!lpuart_is_32(sport))
+	if (lpuart_is_32(sport))
+		sport->port.rs485_config = lpuart32_config_rs485;
+	else
 		sport->port.rs485_config = lpuart_config_rs485;
 
 	sport->ipg_clk = devm_clk_get(&pdev->dev, "ipg");
@@ -2546,6 +2703,40 @@ static int lpuart_probe(struct platform_device *pdev)
 	if (ret)
 		goto failed_attach_port;
 
+  	sport->rs485_cts_gpio = -1;
+	if (of_property_read_bool(np, "linux,rs485-enabled-at-boot-time")) {
+		uart_get_rs485_mode(&pdev->dev, &sport->port.rs485);
+
+		if (sport->port.rs485.flags & SER_RS485_RX_DURING_TX)
+			dev_err(&pdev->dev, "driver doesn't support RX during TX\n");
+
+		if (sport->port.rs485.delay_rts_before_send || sport->port.rs485.delay_rts_after_send)
+			dev_err(&pdev->dev, "driver doesn't support RTS delays\n");
+
+	    if (of_get_property(np, "fsl,rs485-cts-gpio", NULL)) 
+	    {
+	      sport->rs485_cts_gpio = of_get_named_gpio(np, "fsl,rs485-cts-gpio", 0);
+	      //printk("DRIVER %s GET GPIO\n", __FUNCTION__);
+        if (gpio_is_valid(sport->rs485_cts_gpio)) 
+        {
+          ret = devm_gpio_request_one(&pdev->dev, sport->rs485_cts_gpio,   GPIOF_DIR_OUT,    "cts");
+          if (ret)
+          {
+            //printk("DRIVER %s: ERR SET GPIO DIRECTION\n", __FUNCTION__);
+            sport->rs485_cts_gpio = -1;
+          }
+        }
+      }
+	    else 
+	    {
+	      /* 0 is valid gpio */
+	      //printk("DRIVER %s: ERR GET GPIO\n", __FUNCTION__);
+	      sport->rs485_cts_gpio = -1;
+	    }
+    
+		sport->port.rs485_config(&sport->port, &sport->port.rs485);
+	}
+
 	sport->dma_tx_chan = dma_request_slave_channel(sport->port.dev, "tx");
 	if (!sport->dma_tx_chan)
 		dev_info(sport->port.dev, "NO DMA tx channel, run at cpu mode\n");
@@ -2553,13 +2744,6 @@ static int lpuart_probe(struct platform_device *pdev)
 	sport->dma_rx_chan = dma_request_slave_channel(sport->port.dev, "rx");
 	if (!sport->dma_rx_chan)
 		dev_info(sport->port.dev, "NO DMA rx channel, run at cpu mode\n");
-
-	if (!lpuart_is_32(sport) &&
-		of_property_read_bool(np, "linux,rs485-enabled-at-boot-time")) {
-		sport->port.rs485.flags |= SER_RS485_ENABLED;
-		sport->port.rs485.flags |= SER_RS485_RTS_ON_SEND;
-		writeb(UARTMODEM_TXRTSE, sport->port.membase + UARTMODEM);
-	}
 
 	return 0;
 

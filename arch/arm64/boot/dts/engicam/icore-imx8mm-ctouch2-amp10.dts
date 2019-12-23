@@ -274,8 +274,7 @@
 			fsl,pins = <
 				MX8MM_IOMUXC_UART3_RXD_UART3_DCE_RX		0x140
 				MX8MM_IOMUXC_UART3_TXD_UART3_DCE_TX		0x140
-				MX8MM_IOMUXC_ECSPI1_SS0_UART3_DCE_RTS_B		0x140
-				MX8MM_IOMUXC_ECSPI1_MISO_UART3_DCE_CTS_B	0x140
+				MX8MM_IOMUXC_ECSPI1_MISO_GPIO5_IO8      0x140
 			>;
 		};
 
@@ -623,19 +622,10 @@
 	};
 };
 
-&uart1 { /* RS485 */
+&uart1 { /* RS232 */
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart1>;
-	assigned-clocks = <&clk IMX8MM_CLK_UART1_SRC>;
-	assigned-clock-parents = <&clk IMX8MM_SYS_PLL1_80M>;
-    control-gpios =  <&gpio1 10 GPIO_ACTIVE_HIGH>;
-    off_levels = <0>;
-    rs485_levels = <0x0>;
-    rs485-mode = <1>;
-    rs485_txen_levels = <1>;
-    rs485_txen_mask = <1>;
     status = "okay";
-    uart-has-rs485-half-duplex;
 };
 
 &uart2 { /* console */
@@ -644,22 +634,18 @@
 	status = "okay";
 };
 
-&uart3 {
+&uart3 { /*RS485*/
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart3>;
-	assigned-clocks = <&clk IMX8MM_CLK_UART3_SRC>;
-	assigned-clock-parents = <&clk IMX8MM_SYS_PLL1_80M>;
-	fsl,uart-has-rtscts;
-	status = "okay";
+    control-gpios =  <&gpio5 8 GPIO_ACTIVE_HIGH>;
+    uart-has-rs485-half-duplex;	
+    off_levels = <0>;
+    rs485_levels = <0x0>;
+    rs485-mode = <1>;
+    rs485_txen_levels = <1>;
+    rs485_txen_mask = <1>;
+    status = "okay";
 };
-
-&uart4 { /* rs232 */
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_uart4>;
-	status = "okay";
-};
-
-
 
 &usbotg1 {
 	dr_mode = "otg";
@@ -763,6 +749,3 @@
         };
     };
 };
-
-
-

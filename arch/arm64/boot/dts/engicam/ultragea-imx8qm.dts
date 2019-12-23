@@ -15,3 +15,212 @@
 /dts-v1/;
 
 #include "ultragea-imx8qm.dtsi"
+
+&iomuxc {
+	pinctrl-names = "default";
+
+	imx8qm-icore {
+		pinctrl_mipi_csi0_en_rst: mipi_csi0_en_rst {
+			fsl,pins = <
+				SC_P_SPI3_SCK_LSIO_GPIO2_IO17		0x00000021		/* Reset */
+				SC_P_SPI3_CS0_LSIO_GPIO2_IO20		0x00000021		/* Power down */
+			>;
+                };
+
+		pinctrl_mipi_csi1_en_rst: mipi_csi1_en_rst {
+			fsl,pins = <
+				SC_P_SPI3_SDO_LSIO_GPIO2_IO18         0x00000021
+				SC_P_SPI3_SDI_LSIO_GPIO2_IO19         0x00000021
+			>;
+                };
+		pinctrl_i2c2: i2c2grp {
+			fsl,pins = <
+				SC_P_GPT1_CLK_DMA_I2C2_SCL 0x0600004c
+				SC_P_GPT1_CAPTURE_DMA_I2C2_SDA 0x0600004c
+			>;
+		};
+	};
+};
+
+&jpegdec{
+	status = "disabled";
+};
+
+&jpegenc{
+	status = "disabled";
+};
+
+&isi_0 {
+	status = "okay";
+};
+
+&isi_4 {
+	status = "okay";
+};
+
+&isi_1 {
+	status = "disabled";
+};
+
+&isi_2 {
+	status = "disabled";
+};
+
+&isi_3 {
+	status = "disabled";
+};
+
+&isi_5 {
+	status = "disabled";
+};
+
+&isi_6 {
+	status = "disabled";
+};
+
+&isi_7 {
+	status = "disabled";
+};
+
+&mipi_csi_0 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "okay";
+
+	/* Camera 0  MIPI CSI-2 (CSIS0) */
+	port@0 {
+		reg = <0>;
+		mipi_csi0_ep: endpoint {
+			remote-endpoint = <&ov5640_csi0_ep>;
+			data-lanes = <1 2>;
+		};
+	};
+};
+
+&mipi_csi_1 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "okay";
+
+	/* Camera 1  MIPI CSI-2 (CSIS1) */
+	port@1 {
+		reg = <1>;
+		mipi_csi1_ep: endpoint {
+			remote-endpoint = <&ov5640_csi1_ep>;
+			data-lanes = <1 2>;
+		};
+	};
+};
+&i2c1 {
+	/* MIPI-CSI2 sensor */
+	ov5640_mipi_1: ov5640_mipi-1@3c {
+		status = "okay";
+		compatible = "ovti,ov5640_mipi_v3";
+		reg = <0x3c>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_mipi_csi0_en_rst>;
+		clocks = <&clk IMX8QM_24MHZ>;
+		clock-names = "csi_mclk";
+		csi_id = <0>;
+		pwn-gpios = <&gpio2 20 GPIO_ACTIVE_LOW>;
+		rst-gpios = <&gpio2 17 GPIO_ACTIVE_HIGH>;
+		mclk = <24000000>;
+		mclk_source = <0>;
+		mipi_csi;
+
+		port {
+			ov5640_csi0_ep: endpoint {
+				remote-endpoint = <&mipi_csi0_ep>;
+			};
+		};
+
+	};
+
+};
+
+&i2c2 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	clock-frequency = <100000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_i2c2>;
+	status = "okay";
+
+	/* MIPI-CSI2 sensor */
+	ov5640_mipi@3c {
+		compatible = "ovti,ov5640_mipi_v3";
+		reg = <0x3c>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_mipi_csi1_en_rst>;
+		clocks = <&clk IMX8QM_24MHZ>;
+		clock-names = "csi_mclk";
+		csi_id = <1>;
+		pwn-gpios = <&gpio2 18 GPIO_ACTIVE_LOW>;
+		rst-gpios = <&gpio2 19 GPIO_ACTIVE_HIGH>;
+		mclk = <24000000>;
+		mclk_source = <0>;
+		mipi_csi;
+		status = "okay";
+		port {
+			ov5640_csi1_ep: endpoint {
+				remote-endpoint = <&mipi_csi1_ep>;
+			};
+		};
+	};
+};
+
+&ldb1 {
+	status = "okay";
+
+	lvds-channel@0 {
+		fsl,data-mapping = "spwg";
+		fsl,data-width = <24>;
+		status = "okay";
+
+		display-timings {
+			lvds {
+				clock-frequency = <71000000>;
+				hactive = <1280>;
+				vactive = <800>;
+				hsync-len = <136>;
+				hfront-porch = <20>;
+				hback-porch = <160>;
+				vfront-porch = <3>;
+				vback-porch = <29>;
+				vsync-len = <6>;
+				hsync-active = <0>;
+				vsync-active = <0>;
+				de-active = <1>;
+				pixelclk-active = <0>;
+			};
+		};
+	};
+};
+
+&ldb2 {
+	status = "okay";
+
+	lvds-channel@0 {
+		fsl,data-mapping = "spwg";
+		fsl,data-width = <24>;
+		status = "okay";
+
+		display-timings {
+			lvds {
+				clock-frequency = <71000000>;
+				hactive = <1280>;
+				vactive = <800>;
+				hsync-len = <136>;
+				hfront-porch = <20>;
+				hback-porch = <160>;
+				vfront-porch = <3>;
+				vback-porch = <29>;
+				vsync-len = <6>;
+				hsync-active = <0>;
+				vsync-active = <0>;
+				de-active = <1>;
+				pixelclk-active = <0>;
+			};
+		};
+	};
+};

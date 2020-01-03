@@ -221,7 +221,17 @@
 	status = "okay";
 };
 
-
+#define USB1_HOST
+#ifdef USB1_HOST
+&usbotg1 {
+	dr_mode = "host";
+	srp-disable;
+	hnp-disable;
+	adp-disable;
+	disable-over-current;
+	status = "okay";
+};
+#else
 &usbotg1 {
 	//pinctrl-names = "default";
 	//pinctrl-0 = <&pinctrl_usbotg1>;
@@ -232,15 +242,7 @@
 	disable-over-current;
 	status = "okay";
 };
-
-/*
-&usbotg1 {
-	dr_mode = "host";
-	disable-over-current;
-	status = "okay";
-};
-*/
-
+#endif
 
 &usbotg3 {
 	dr_mode = "host";

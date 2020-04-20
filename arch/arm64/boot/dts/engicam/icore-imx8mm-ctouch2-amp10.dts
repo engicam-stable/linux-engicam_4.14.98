@@ -287,7 +287,7 @@
 
 		pinctrl_usdhc1_gpio: usdhc1grpgpio {
 			fsl,pins = <
-				MX8MM_IOMUXC_SD1_RESET_B_GPIO2_IO10	0x41
+				MX8MM_IOMUXC_GPIO1_IO06_GPIO1_IO6	0x41
 			>;
 		};
 
@@ -489,8 +489,8 @@
 			reg_sw7: sw7 {
 				regulator-always-on;
 				regulator-boot-on;
-				regulator-max-microvolt = <4100000>;
-				regulator-min-microvolt = <1000000>;
+				regulator-max-microvolt = <3300000>;
+				regulator-min-microvolt = <3300000>;
 			};
 
 			reg_vsnvs: vsnvs {
@@ -664,14 +664,14 @@
 };
 
 &usdhc1 {
-	pinctrl-names = "default", "state_100mhz", "state_200mhz";
+	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usdhc1>, <&pinctrl_usdhc1_gpio>;
-	pinctrl-1 = <&pinctrl_usdhc1_100mhz>, <&pinctrl_usdhc1_gpio>;
-	pinctrl-2 = <&pinctrl_usdhc1_200mhz>, <&pinctrl_usdhc1_gpio>;
+	cd-gpios = <&gpio1 6 GPIO_ACTIVE_LOW>;
+	max-frequency = <50000000>;
 	bus-width = <4>;
+	no-1-8-v;
 	pm-ignore-notify;
 	keep-power-in-suspend;
-	non-removable;
 	status = "okay";
 };
 

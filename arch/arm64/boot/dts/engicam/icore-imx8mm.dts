@@ -493,6 +493,7 @@
 				regulator-boot-on;
 				regulator-max-microvolt = <1800000>;
 				regulator-min-microvolt =  <400000>;
+				fast-slew = <1>;
 			};
 
 			reg_sw4: sw4 {
@@ -500,6 +501,7 @@
 				regulator-boot-on;
 				regulator-max-microvolt = <1800000>;
 				regulator-min-microvolt =  <400000>;
+				fast-slew = <1>;
 				dual-phase;
 			};
 
@@ -852,6 +854,10 @@
 	status = "okay";
 };
 
+&vpumix_pd {
+	dvfs-supply = <&reg_sw5>;
+	idle-microvolt = <850000 805000 900000>;
+};
 
 / {
     regulators {

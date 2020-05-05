@@ -165,6 +165,11 @@ enum chips {
 	PF8200 = 0x48,
 };
 
+struct id_name {
+	enum chips id;
+	const char *name;
+};
+
 struct pf8x_regulator {
 	struct regulator_desc desc;
 	unsigned char stby_reg;
@@ -175,10 +180,13 @@ struct pf8x_regulator {
 	unsigned char vselect_en;
 	unsigned char quad_phase;
 	unsigned char dual_phase;
+	unsigned char fast_slew;
 };
 
 struct pf8x_chip {
 	int	chip_id;
+	int	prog_id;
+	int	clk_freq;
 	struct regmap *regmap;
 	struct device *dev;
 	struct pf8x_regulator regulator_descs[REG_NUM_REGULATORS];
@@ -247,6 +255,25 @@ static const struct of_device_id pf8x_dt_ids[] = {
 };
 MODULE_DEVICE_TABLE(of, pf8x_dt_ids);
 
+const struct id_name id_list[] = {
+	{PF8100, "PF8100"},
+	{PF8121A, "PF8121A"},
+	{PF8200, "PF8200"},
+	{0, "???"},
+};
+
+const struct id_name *get_id_name(enum chips id)
+{
+	const struct id_name *p = id_list;
+
+	while (p->id) {
+		if (p->id == id)
+			break;
+		p++;
+	}
+	return p;
+}
+
 struct dvs_ramp {
 	unsigned short up_down_slow_fast[4];
 };
@@ -268,35 +295,20 @@ static int pf8x00_regulator_set_voltage_time_sel(struct regulator_dev *rdev,
 		unsigned int old_sel, unsigned int new_sel)
 {
 	struct pf8x_chip *pf = rdev_get_drvdata(rdev);
+	struct pf8x_regulator *rdesc = container_of(rdev->desc, struct pf8x_regulator, desc);
 	const unsigned int *volt_table = rdev->desc->volt_table;
 	int old_v = volt_table[old_sel];
 	int new_v = volt_table[new_sel];
-	unsigned change = (new_v - old_v);
-	unsigned clk_index = 0;
+	int change = (new_v - old_v);
 	unsigned index;
-	unsigned fast = 0;
 	unsigned slew;
-	int ret;
 
-	ret = regmap_read(pf->regmap, rdev->desc->enable_reg +
-			SW_CONFIG2 - SW_MODE1, &fast);
-	fast &= 0x20;
-	if (ret < 0)
-		fast = 0;
-	ret = regmap_read(pf->regmap, PF8X00_FREQ_CTRL, &index);
-	index &= 0xf;
-	if (ret < 0)
-		index = 0;
-	if (((index & 7) > 4) || (index == 8))
-		index = 0;
-
-	index = fast ? 2 : 0;
-	if (change < 0) {
-		change = -change;
+	index = (rdesc->fast_slew & 1) ? 2 : 0;
+	if (change < 0)
 		index++;
-	}
-	slew = ramp_table[clk_index].up_down_slow_fast[index];
-	return DIV_ROUND_UP(change, slew);
+	slew = ramp_table[pf->clk_freq].up_down_slow_fast[index];
+
+	return DIV_ROUND_UP(abs(change), slew);
 }
 
 static short ilim_table[] = {
@@ -342,6 +354,7 @@ static int pf8x00_of_parse_cb(struct device_node *np,
 	unsigned char dual_phase = 0;
 	int ilim;
 	int phase;
+	int fast_slew;
 	int ret;
 
 	ret = of_property_read_u32(np, "ilim-ma",
@@ -354,6 +367,10 @@ static int pf8x00_of_parse_cb(struct device_node *np,
 		phase = -1;
 	ilim = encode_ilim(pf, ilim);
 	phase = encode_phase(pf, phase);
+
+	ret = of_property_read_u32(np, "fast-slew", &fast_slew);
+	if (ret)
+		fast_slew = -1;
 
 	if (of_get_property(np, "hw-en", NULL))
 		hw_en = 1;
@@ -399,10 +416,11 @@ static int pf8x00_of_parse_cb(struct device_node *np,
 	rdesc->vselect_en = vselect_en;
 	rdesc->quad_phase = quad_phase;
 	rdesc->dual_phase = dual_phase;
-	pr_debug("%s:id=%d ilim=%d, phase=%d, hw_en=%d vselect_en=%d"
-		" quad_phase=%d dual_phase=%d\n",
+	rdesc->fast_slew = fast_slew;
+	dev_dbg(pf->dev, "%s:id=%d ilim=%d, phase=%d, hw_en=%d vselect_en=%d"
+		" quad_phase=%d dual_phase=%d fast_slew=%d\n",
 		__func__, desc->id, ilim, phase, hw_en, vselect_en,
-		quad_phase, dual_phase);
+		quad_phase, dual_phase, fast_slew);
 	return 0;
 }
 
@@ -591,7 +609,8 @@ static inline struct device_node *match_of_node(int index)
 
 static int pf8x_identify(struct pf8x_chip *pf)
 {
-	unsigned int value;
+	const struct id_name *p;
+	unsigned int value, id1, id2;
 	int ret;
 
 	ret = regmap_read(pf->regmap, PF8X00_DEVICEID, &value);
@@ -599,7 +618,8 @@ static int pf8x_identify(struct pf8x_chip *pf)
 		return ret;
 
 	pf->chip_id = value;
-	if ((value != PF8100) && (value != PF8121A) && (value != PF8200)) {
+	p = get_id_name(value);
+	if (p->id != value) {
 		dev_warn(pf->dev, "Illegal ID: %x\n", value);
 		return -ENODEV;
 	}
@@ -607,10 +627,16 @@ static int pf8x_identify(struct pf8x_chip *pf)
 	ret = regmap_read(pf->regmap, PF8X00_REVID, &value);
 	if (ret)
 		value = 0;
-	dev_info(pf->dev,
-		 "%s: Full layer: %x, Metal layer: %x\n",
-		 (pf->chip_id == PF8100) ? "PF8100" : "PF8200",
-		 (value & 0xf0) >> 4, value & 0x0f);
+	ret = regmap_read(pf->regmap, PF8X00_EMREV, &id1);
+	if (ret)
+		id1 = 0;
+	ret = regmap_read(pf->regmap, PF8X00_PROGID, &id2);
+	if (ret)
+		id2 = 0;
+	pf->prog_id = (id1 << 8) | id2;
+
+	dev_info(pf->dev, "%s: Full layer: %x, Metal layer: %x, prog_id=0x%04x\n",
+		 p->name, (value & 0xf0) >> 4, value & 0x0f, pf->prog_id);
 
 	return 0;
 }
@@ -621,6 +647,34 @@ static const struct regmap_config pf8x_regmap_config = {
 	.max_register = PF8X_NUMREGS - 1,
 	.cache_type = REGCACHE_RBTREE,
 };
+
+struct otp_reg_lookup {
+	unsigned short prog_id;
+	unsigned char reg;
+	unsigned char value;
+};
+
+static const struct otp_reg_lookup otp_map[] = {
+	{ 0x401c, PF8X00_OTP_CTRL3, 0 },
+	{ 0x4008, PF8X00_OTP_CTRL3, 0x04 },
+	{ 0x301d, PF8X00_OTP_CTRL3, 0x04 },	/* test only */
+	{ 0, 0, 0 },
+};
+
+static int get_otp_reg(struct pf8x_chip *pf, unsigned char reg)
+{
+	const struct otp_reg_lookup *p = otp_map;
+
+	while (p->reg) {
+		if ((pf->prog_id == p->prog_id) && (reg == p->reg))
+			return p->value;
+		p++;
+	}
+
+	dev_err(pf->dev, "reg(0x%02x) not found for 0x%04x\n",
+		 reg, pf->prog_id);
+	return -EINVAL;
+}
 
 static int pf8x00_regulator_probe(struct i2c_client *client,
 				    const struct i2c_device_id *id)
@@ -638,7 +692,9 @@ static int pf8x00_regulator_probe(struct i2c_client *client,
 	unsigned char quad_phase;
 	unsigned char dual_phase;
 	unsigned val;
-	unsigned ctrl3;
+	int ctrl3;
+	const char *format = NULL;
+	unsigned clk_freq = 0;
 
 	pf = devm_kzalloc(&client->dev, sizeof(*pf),
 			GFP_KERNEL);
@@ -660,9 +716,16 @@ static int pf8x00_regulator_probe(struct i2c_client *client,
 	if (ret)
 		return ret;
 
-	dev_info(&client->dev, "pf8%c00 found.\n",
-		(pf->chip_id == PF8100) ? '1' :
-		((pf->chip_id == PF8200) ? '2' : '?'));
+	dev_info(&client->dev, "%s found.\n",
+		get_id_name(pf->chip_id)->name);
+
+	ret = regmap_read(pf->regmap, PF8X00_FREQ_CTRL, &clk_freq);
+	clk_freq &= 0xf;
+	if (ret < 0)
+		clk_freq = 0;
+	if (((clk_freq & 7) > 4) || (clk_freq == 8))
+		clk_freq = 0;
+	pf->clk_freq = clk_freq;
 
 	memcpy(pf->regulator_descs, pf8x00_regulators,
 		sizeof(pf->regulator_descs));
@@ -703,6 +766,7 @@ static int pf8x00_regulator_probe(struct i2c_client *client,
 			unsigned mask = 0;
 			unsigned val = 0;
 			unsigned reg = PF8X00_SW(i) + SW_CONFIG2;
+			unsigned fast_slew = pf->regulator_descs[i].fast_slew;
 
 			if (phase <= 7) {
 				mask |= 7;
@@ -712,11 +776,22 @@ static int pf8x00_regulator_probe(struct i2c_client *client,
 				mask |= 3 << 3;
 				val |= ilim << 3;
 			}
+			if (fast_slew <= 1) {
+				mask |= 1 << 5;
+				val |= fast_slew << 5;
+			}
 			if (mask) {
-				pr_debug("%s:reg=0x%x, mask=0x%x, val=0x%x\n",
-					__func__, reg, mask, val);
+				dev_dbg(pf->dev, "%s: reg=0x%x, mask=0x%x, "
+					"val=0x%x\n", __func__, reg, mask, val);
 				ret = regmap_update_bits(pf->regmap, reg, mask,
 						val);
+			}
+			if (fast_slew > 1) {
+				ret = regmap_read(pf->regmap, reg, &fast_slew);
+				fast_slew &= 0x20;
+				if (ret < 0)
+					fast_slew = 0;
+				pf->regulator_descs[i].fast_slew = fast_slew >> 5;
 			}
 		}
 	}
@@ -729,36 +804,39 @@ static int pf8x00_regulator_probe(struct i2c_client *client,
 			PF8X00_LDO(REG_LDO2) + LDO_CONFIG2,
 				 0x18, val);
 
-	ret = regmap_write(pf->regmap, PF8X00_PAGE_SELECT, 1);
-	if (!ret)
-		ret = regmap_read(pf->regmap, PF8X00_OTP_CTRL3, &ctrl3);
-	if (!ret) {
+	ctrl3 = get_otp_reg(pf, PF8X00_OTP_CTRL3);
+	if (ctrl3 >= 0) {
 		quad_phase = pf->regulator_descs[REG_SW1].quad_phase;
 		dual_phase = pf->regulator_descs[REG_SW1].dual_phase;
 		if (quad_phase) {
 			if ((ctrl3 & 3) != 2)
-				dev_warn(pf->dev, "sw1 quad_phase not set in otp_ctrl3 %x\n", ctrl3);
+				format = "sw1 quad_phase not set in otp_ctrl3 %x\n";
+
 		} else if (dual_phase) {
 			if ((ctrl3 & 3) != 1)
-				dev_warn(pf->dev, "sw1 dual_phase not set in otp_ctrl3 %x\n", ctrl3);
+				format = "sw1 dual_phase not set in otp_ctrl3 %x\n";
 		} else if (ctrl3 & 3) {
-			dev_warn(pf->dev, "sw1 single_phase not set in otp_ctrl3 %x\n", ctrl3);
+			format = "sw1 single_phase not set in otp_ctrl3 %x\n";
 		}
 		if (!quad_phase) {
 			dual_phase = pf->regulator_descs[REG_SW4].dual_phase;
 			if (dual_phase) {
 				if ((ctrl3 & 0x0c) != 4)
-					dev_warn(pf->dev, "sw4 dual_phase not set in otp_ctrl3 %x\n", ctrl3);
+					format = "sw4 dual_phase not set in otp_ctrl3 %x\n";
 			} else if (ctrl3 & 0x0c) {
-				dev_warn(pf->dev, "sw4 single_phase not set in otp_ctrl3 %x\n", ctrl3);
+				format = "sw4 single_phase not set in otp_ctrl3 %x\n";
 			}
 		}
 		dual_phase = pf->regulator_descs[REG_SW5].dual_phase;
 		if (dual_phase) {
 			if ((ctrl3 & 0x30) != 0x10)
-				dev_warn(pf->dev, "sw5 dual_phase not set in otp_ctrl3 %x\n", ctrl3);
+				format = "sw5 dual_phase not set in otp_ctrl3 %x\n";
 		} else if (ctrl3 & 0x30) {
-			dev_warn(pf->dev, "sw5 single_phase not set in otp_ctrl3 %x\n", ctrl3);
+			format = "sw5 single_phase not set in otp_ctrl3 %x\n";
+		}
+		if (format) {
+			dev_err(pf->dev, format, ctrl3);
+			dev_err(pf->dev, "!!!try updating u-boot, boot.scr, or pmic\n");
 		}
 	}
 	return 0;
@@ -795,3 +873,4 @@ module_i2c_driver(pf8x_driver);
 MODULE_AUTHOR("Troy Kisky <troy.kisky@boundarydevices.com>");
 MODULE_DESCRIPTION("Regulator Driver for NXP's PF8100/PF8200 PMIC");
 MODULE_LICENSE("GPL v2");
+

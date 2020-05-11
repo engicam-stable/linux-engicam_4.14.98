@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Engicam srl
+ * Copyright 2020 Engicam srl
  * Copyright 2018 NXP
  *
  * This program is free software; you can redistribute it and/or
@@ -29,7 +29,7 @@
 	
 	gpio-restart {
         compatible = "gpio-restart";
-        gpios = <&gpio1 2 1>;
+        gpios = <&gpio1 2 0>;
         priority = <128>;
         active-delay = <100>;
         inactive-delay = <100>;
@@ -45,35 +45,6 @@
             default-brightness-level = <7>;
             status = "okay";
     };
-
-	leds {
-		compatible = "gpio-leds";
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_gpio_led>;
-
-		status {
-			label = "status";
-			gpios = <&gpio3 16 0>;
-			default-state = "on";
-		};
-	};
-
-	modem_reset: modem-reset {
-		compatible = "gpio-reset";
-		reset-gpios = <&gpio2 6 GPIO_ACTIVE_LOW>;
-		reset-delay-us = <2000>;
-		reset-post-delay-ms = <40>;
-		#reset-cells = <0>;
-	};
-
-	usb_hub_reset: usb-hub-reset {
-		compatible = "gpio-reset";
-		reset-gpios = <&gpio1 9 GPIO_ACTIVE_LOW>;
-		reset-delay-us = <2000>;
-		reset-post-delay-ms = <40>;
-		#reset-cells = <0>;
-	};
-
 };
 
 &pwm1{
@@ -87,8 +58,15 @@
 
 &iomuxc {
 	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_hog>;
 
 	icore-imx8mm {
+        pinctrl_hog: hoggrp {
+			fsl,pins = <
+				MX8MM_IOMUXC_GPIO1_IO02_GPIO1_IO2	0x19
+			>;
+        };
+
         pinctrl_dsi_lvds_bridge: lvds_bridge_gpio {
             fsl,pins = <
                 MX8MM_IOMUXC_NAND_DATA03_GPIO3_IO9	0x19
@@ -149,12 +127,6 @@
 				MX8MM_IOMUXC_ENET_RX_CTL_ENET1_RGMII_RX_CTL	0x91
 				MX8MM_IOMUXC_ENET_TX_CTL_ENET1_RGMII_TX_CTL	0x1f
 				MX8MM_IOMUXC_NAND_DATA01_GPIO3_IO7	0x19
-			>;
-		};
-
-		pinctrl_gpio_led: gpioledgrp {
-			fsl,pins = <
-				MX8MM_IOMUXC_NAND_READY_B_GPIO3_IO16	0x19
 			>;
 		};
 
@@ -388,12 +360,6 @@
 				MX8MM_IOMUXC_SAI5_RXFS_GPIO3_IO19   		0xc6
 				MX8MM_IOMUXC_GPIO1_IO08_GPIO1_IO8		0x19
             >;	
-		};
-		
-		pinctrl_wdog: wdoggrp {
-			fsl,pins = <
-				MX8MM_IOMUXC_GPIO1_IO02_GPIO1_IO2		0x19
-			>;
 		};
 	};
 };
@@ -687,8 +653,6 @@
 };
 
 &wdog1 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_wdog>;
 	status = "okay";
 };
 

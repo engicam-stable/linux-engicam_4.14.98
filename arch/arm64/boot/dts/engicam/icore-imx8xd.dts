@@ -908,3 +908,13 @@
 	status = "okay";
 };
 
+&vpu_decoder {
+  core_type = <1>;
+	status = "okay";
+};
+
+&vpu_encoder {
+	status = "okay";
+};
+
+

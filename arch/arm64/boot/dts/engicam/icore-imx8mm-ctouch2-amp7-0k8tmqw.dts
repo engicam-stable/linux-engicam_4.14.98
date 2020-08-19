@@ -13,10 +13,11 @@
  * GNU General Public License for more details.
  */
 
+
 #include "icore-imx8mm-ctouch2.dts"
 
 / {
-	model = "Engicam i.Core MX8MM CTOUCH2.0 AM10";
+	model = "Engicam i.Core MX8MM CTOUCH2.0 AM-1024600K8TMQW-T16H";
 };
 
 &i2c4 {
@@ -39,18 +40,18 @@
     backlight = <&backlight_lvds>;
     backlight-brightness-level = <7>;    
     status = "okay";
-
+    
     display-timings {
       native-mode = <&timing1>;
       timing1: hsd100pxn1 {
-        clock-frequency = <60000000>;
-        hactive = <1280>;
-        vactive = <800>;
-        hback-porch = <40>;
-        hfront-porch = <40>;
-        vback-porch = <10>;
-        vfront-porch = <3>;
-        hsync-len = <80>;
+        clock-frequency = <51200000>;
+        hactive = <1024>;
+        vactive = <600>;
+        hback-porch = <180>;
+        hfront-porch = <140>;
+        vback-porch = <15>;
+        vfront-porch = <20>;
+        hsync-len = <20>;
         vsync-len = <10>;
       };
     };

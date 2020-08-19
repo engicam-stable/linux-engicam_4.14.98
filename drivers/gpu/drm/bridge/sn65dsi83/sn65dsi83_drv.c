@@ -1,7 +1,7 @@
 /*
  * Licensed under the GPL-2.
  */
-//#define DEBUG
+#include <linux/backlight.h>
 #include <linux/device.h>
 #include <linux/gpio/consumer.h>
 #include <linux/module.h>
@@ -34,6 +34,7 @@ struct sn65dsi83 {
     struct device_node *host_node;
     struct mipi_dsi_device *dsi;
     struct sn65dsi83_brg *brg;
+    struct backlight_device *backlight;
 };
 
 static int sn65dsi83_attach_dsi(struct sn65dsi83 *sn65dsi83);
@@ -166,6 +167,9 @@ static void sn65dsi83_bridge_enable(struct drm_bridge *bridge)
     dev_info(DRM_DEVICE(bridge),"%s\n",__func__);
     sn65dsi83->brg->funcs->setup(sn65dsi83->brg);
     sn65dsi83->brg->funcs->start_stream(sn65dsi83->brg);
+    if (sn65dsi83->backlight) {
+      backlight_enable(sn65dsi83->backlight);
+    }
 }
 
 static void sn65dsi83_bridge_disable(struct drm_bridge *bridge)
@@ -174,6 +178,9 @@ static void sn65dsi83_bridge_disable(struct drm_bridge *bridge)
     dev_info(DRM_DEVICE(bridge),"%s\n",__func__);
     sn65dsi83->brg->funcs->stop_stream(sn65dsi83->brg);
     sn65dsi83->brg->funcs->power_off(sn65dsi83->brg);
+    if (sn65dsi83->backlight) {
+      backlight_disable(sn65dsi83->backlight);
+    }
 }
 
 static void sn65dsi83_bridge_mode_set(struct drm_bridge *bridge,
@@ -230,8 +237,9 @@ static int sn65dsi83_parse_dt(struct device_node *np,
     struct device *dev = &sn65dsi83->brg->client->dev;
     u32 num_lanes = 4, bpp = 24, format = 2, width = 149, height = 93, dual_channels = 0, pattern = 0;
     struct device_node *endpoint;
-
-	dev_dbg(dev, "sn65dsi83_parse_dt\n");
+    struct device_node *backlight;
+    
+    dev_dbg(dev, "sn65dsi83_parse_dt\n");
 
     endpoint = of_graph_get_next_endpoint(np, NULL);
     if (!endpoint)
@@ -279,7 +287,25 @@ static int sn65dsi83_parse_dt(struct device_node *np,
 		 dev_dbg(dev, "******** panel_default_timing\n");  
         videomode_from_timing(&panel_default_timing, &sn65dsi83->brg->vm);
 	}
+    backlight = of_parse_phandle(np, "backlight", 0);
+    if (backlight) 
+    {
+      u32 backlight_brightness_level = 0;
+      sn65dsi83->backlight = of_find_backlight_by_node(backlight);
+      of_node_put(backlight);
 
+      if (!sn65dsi83->backlight)
+      {
+        return -EPROBE_DEFER;
+      }
+      
+      of_property_read_u32(np, "backlight-brightness-level", &backlight_brightness_level);
+      sn65dsi83->backlight->props.brightness = backlight_brightness_level;
+    }
+    else
+    {
+      sn65dsi83->backlight = NULL;
+    }
     of_node_put(endpoint);
     of_node_put(sn65dsi83->host_node);
 

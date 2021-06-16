@@ -93,7 +93,7 @@ obj-$(CONFIG_TWL4030_CORE)	+= twl-core.o twl4030-irq.o twl6030-irq.o
 obj-$(CONFIG_TWL4030_POWER)    += twl4030-power.o
 obj-$(CONFIG_MFD_TWL4030_AUDIO)	+= twl4030-audio.o
 obj-$(CONFIG_TWL6040_CORE)	+= twl6040.o
-
+obj-$(CONFIG_MFD_PCA9450)       += pca9450.o
 obj-$(CONFIG_MFD_MX25_TSADC)	+= fsl-imx25-tsadc.o
 
 obj-$(CONFIG_MFD_MC13XXX)	+= mc13xxx-core.o
